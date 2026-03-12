@@ -1,0 +1,6 @@
+{
+  "name": "indexion-skills",
+  "version": "0.1.0",
+  "description": "Claude Code skills powered by indexion — source code exploration, similarity analysis, and documentation tools",
+  "skills": "./skills/"
+}
