@@ -14,6 +14,17 @@ Generate solidification plans for common code extraction across directories.
 - Planning a shared library extraction from multiple packages
 - User wants to consolidate similar implementations
 
+## Difference from plan refactor
+
+| | `plan refactor` | `plan solid` |
+|---|-----------------|-------------|
+| Scope | Single directory (find internal duplication) | Cross-directory (find overlap between dirs) |
+| Goal | Consolidate within a codebase | Extract shared code into a new package |
+| Input | One path | `--from=dirA,dirB` (multiple source dirs) |
+
+Use `plan refactor` first to clean up each directory, then `plan solid`
+to identify cross-directory extraction candidates.
+
 ## Usage
 
 ```bash

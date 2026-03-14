@@ -13,6 +13,7 @@ Analyze documentation coverage and generate actionable documentation plans.
 - User wants to check documentation coverage
 - User is planning a documentation sprint
 - Before a release, to ensure docs are complete
+- **After adding new public APIs** — verify doc coverage hasn't dropped
 
 ## Usage
 
@@ -48,6 +49,14 @@ indexion plan documentation -o=doc-plan.md <path>
 | `--template=FILE` | — | GitHub Issue Form template (.yml) |
 | `--name=NAME` | auto | Project name (auto-detect from moon.mod.json) |
 | `--output=FILE, -o=` | stdout | Output file path |
+
+## How It Works
+
+Public item detection uses **KGF tokenization** (language-agnostic):
+- Detects visibility keywords (`pub`, `public`, `export`) followed by declaration
+  keywords (`fn`, `struct`, `class`, `enum`, `type`, `trait`, etc.)
+- Associates `///` doc comments with the declarations they precede
+- Works for any language with a KGF spec — not hardcoded to MoonBit
 
 ## Workflow
 

@@ -13,6 +13,7 @@ Generate structured refactoring plans from file similarity analysis.
 - User wants to reduce code duplication
 - User asks "what should I consolidate?"
 - Before a large-scale code cleanup
+- **After writing new code** — dogfood to catch accidental duplication
 
 ## Usage
 
@@ -54,9 +55,51 @@ indexion plan refactor -o=refactor-plan.md <path>
 | `--exclude=PATTERN` | — | Exclude pattern (repeatable) |
 | `--output=FILE, -o=` | stdout | Output file path |
 
-## Workflow
+## Dogfooding Workflow (Proven)
 
-1. Run `indexion plan refactor --style=structured <path>` to get a full plan
-2. Review the identified similarity groups
-3. Prioritize based on the plan's recommendations
-4. Execute refactoring following the suggested phases
+This workflow was validated by using indexion on itself to eliminate 53+ duplicate
+utility functions across 12 CLI packages.
+
+### Step 1: Detect duplicates
+
+```bash
+# Find code duplicates above 90% (high-confidence matches)
+indexion plan refactor --threshold=0.9 \
+  --include='*.mbt' --exclude='*_wbtest.mbt' \
+  --exclude='*moon.pkg*' --exclude='*pkg.generated*' \
+  cmd/indexion/
+```
+
+### Step 2: Analyze the output
+
+Focus on the **Duplicate Code Blocks** section. Key patterns to look for:
+- **Identical utility functions** (e.g., `trim_string`, `parse_double`) → extract to a shared module
+- **Same logic with different names** (e.g., `format_refactor_issue` vs `format_github_issue`) → unify
+- **Hardcoded patterns** (e.g., `has_prefix("pub fn ")`) → replace with data-driven approach
+- **CLI boilerplate** (e.g., `--output=`/`-o=` parsing) → extract common parser
+
+### Step 3: Fix and verify
+
+After consolidating duplicates, re-run with the same threshold to confirm
+they no longer appear. Lower the threshold to find more candidates:
+
+```bash
+# After fixing 90%+ duplicates, look for 85%+ matches
+indexion plan refactor --threshold=0.85 --include='*.mbt' ...
+```
+
+### Step 4: Iterate
+
+Repeat steps 1-3 with progressively lower thresholds until only
+structural patterns remain (CLI boilerplate, doc comment headers).
+
+## Tips
+
+- **Exclude noise**: Always exclude `*_wbtest.mbt`, `*moon.pkg*`, `*pkg.generated*`
+  to focus on actual code duplication rather than config/test similarity.
+- **Start high**: Begin with `--threshold=0.9` and work down. Low thresholds
+  produce huge result sets that are hard to act on.
+- **Combine with explore**: Use `indexion explore --format=list` first to get
+  a quick similarity overview, then use `plan refactor` for actionable detail.
+- **Per-pair detail**: The output shows exact line numbers and function names
+  for each duplicate block — use these to navigate directly to the code.
