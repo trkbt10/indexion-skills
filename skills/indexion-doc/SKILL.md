@@ -66,7 +66,7 @@ indexion doc readme --template=.indexion/state/templates/readme.md <path>
 # Using doc.json configuration
 indexion doc readme --config=doc.json <path>
 
-# Per-package README generation
+# Per-package README generation (skips packages with existing README.md)
 indexion doc readme --per-package <path>
 
 # Filter files
@@ -84,7 +84,7 @@ indexion doc readme --format=raw <path>
 | `--format=FORMAT` | markdown | Output format: markdown, json, raw |
 | `--template=FILE` | — | Template file for generation |
 | `--config=FILE` | — | doc.json configuration file |
-| `--per-package` | false | Generate README.md in each package directory |
+| `--per-package` | false | Generate README.md per package (skips existing READMEs) |
 | `--recursive` | true | Recurse into subdirectories |
 | `--no-recursive` | — | Disable recursion |
 | `--include=PATTERN` | — | Include pattern (repeatable) |

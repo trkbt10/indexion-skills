@@ -7,6 +7,8 @@ description: Detect drift between implementation and documentation. Use when the
 
 Detect implementation/documentation drift by comparing file timestamps and content relationships.
 
+Uses inverted-index-accelerated matching and optional fork-based parallelism on native targets.
+
 ## When to Use
 
 - User asks "are the docs up to date?"
@@ -66,6 +68,7 @@ indexion plan reconcile --format=github-issue <path>
 | `--no-file-fallback` | false | Disable basename/file-path fallback matching |
 | `--mtime-only` | false | Skip git timestamps, use file mtimes |
 | `--logical-review=MODE` | queue | Logical review mode: queue, off |
+| `--no-parallel` | false | Disable fork-based parallel processing |
 | `--output=FILE, -o=` | stdout | Output file path |
 
 ## Workflow

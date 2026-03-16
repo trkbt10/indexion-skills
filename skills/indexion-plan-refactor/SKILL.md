@@ -47,7 +47,7 @@ indexion plan refactor -o=refactor-plan.md <path>
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--threshold=FLOAT` | 0.7 | Minimum similarity threshold |
-| `--strategy=NAME` | tfidf | Similarity strategy: hybrid, ncd, tfidf |
+| `--strategy=NAME` | hybrid | Similarity strategy: hybrid, tfidf, ncd, apted, tsed |
 | `--style=STYLE` | raw | Output style: raw, structured |
 | `--format=FORMAT` | md | Output format: md, json, text, github-issue |
 | `--name=NAME` | — | Project name (for structured style) |
@@ -72,11 +72,19 @@ indexion plan refactor --threshold=0.9 \
 
 ### Step 2: Analyze the output
 
-Focus on the **Duplicate Code Blocks** section. Key patterns to look for:
-- **Identical utility functions** (e.g., `trim_string`, `parse_double`) → extract to a shared module
-- **Same logic with different names** (e.g., `format_refactor_issue` vs `format_github_issue`) → unify
-- **Hardcoded patterns** (e.g., `has_prefix("pub fn ")`) → replace with data-driven approach
-- **CLI boilerplate** (e.g., `--output=`/`-o=` parsing) → extract common parser
+Focus on **three sections**:
+
+**Duplicate Code Blocks** — line-level identical code between files:
+- Identical utility functions → extract to `@common` or shared module
+- Same logic with different names → unify
+
+**Function-Level Duplicates** — structurally similar functions (TF-IDF on function bodies):
+- Cross-file: same function copied between packages → extract to SoT
+- Same-file: nearly identical functions → parameterize into one
+
+**Same-file duplicates** — functions within one file that are 90%+ similar:
+- These are the highest-value targets (easiest to fix, clearest wins)
+- Example: `get_global_data_dir ≈ get_global_cache_dir` → extract `resolve_os_dir`
 
 ### Step 3: Fix and verify
 

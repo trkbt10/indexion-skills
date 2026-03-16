@@ -50,11 +50,15 @@ indexion explore --strategy=tsed --format=list <path>
 
 | Strategy | Description | Speed |
 |----------|-------------|-------|
-| `tfidf` (default) | TF-IDF token similarity | Fast |
+| `hybrid` (default) | Dynamic TF-IDF + APTED, auto-selects based on dataset size | Adaptive |
+| `tfidf` | TF-IDF token similarity only | Fast |
 | `ncd` | Normalized Compression Distance | Fast |
-| `hybrid` | Combined NCD + TF-IDF | Fast |
 | `apted` | All-Path Tree Edit Distance (function-level) | Slow |
 | `tsed` | Tree Structure Edit Distance (function-level) | Slow |
+
+The **hybrid** strategy dynamically switches between TF-IDF and APTED based on
+file count and tree complexity. For small datasets it uses precise APTED on all
+pairs; for large datasets it falls back to TF-IDF only.
 
 ## Output Formats
 
