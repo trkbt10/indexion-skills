@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "indexion-skills",
-      "source": ".",
+      "source": "./",
       "description": "Source code exploration, similarity analysis, and documentation skills powered by indexion",
       "version": "0.1.0",
       "author": { "name": "trkbt10" },
