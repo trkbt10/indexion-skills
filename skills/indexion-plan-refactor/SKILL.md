@@ -101,12 +101,30 @@ indexion plan refactor --threshold=0.85 --include='*.mbt' ...
 Repeat steps 1-3 with progressively lower thresholds until only
 structural patterns remain (CLI boilerplate, doc comment headers).
 
+## Relationship to grep
+
+`indexion grep` complements `plan refactor` for targeted searches:
+
+```bash
+# Find specific duplication patterns
+indexion grep --semantic=name:sort src/          # Find all "sort" functions
+indexion grep --semantic=proxy src/              # Find proxy functions
+indexion grep "for ... for" src/                 # Find nested loops
+
+# After plan refactor identifies duplicates, use grep to find all references
+indexion grep "TypeIdent:TfidfEmbeddingProvider" src/
+```
+
+Use `grep` for **targeted discovery**, `plan refactor` for **comprehensive analysis**.
+
 ## Tips
 
 - **Exclude noise**: Always exclude `*_wbtest.mbt`, `*moon.pkg*`, `*pkg.generated*`
   to focus on actual code duplication rather than config/test similarity.
 - **Start high**: Begin with `--threshold=0.9` and work down. Low thresholds
   produce huge result sets that are hard to act on.
+- **Combine with grep**: Use `indexion grep --semantic=name:X` to find all
+  functions with a specific name, or `grep --semantic=proxy` to find wrappers.
 - **Combine with explore**: Use `indexion explore --format=list` first to get
   a quick similarity overview, then use `plan refactor` for actionable detail.
 - **Per-pair detail**: The output shows exact line numbers and function names

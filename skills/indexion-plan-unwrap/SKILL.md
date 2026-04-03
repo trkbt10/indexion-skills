@@ -128,6 +128,21 @@ indexion plan refactor --threshold=0.9 \
   src/
 ```
 
+## Relationship to grep
+
+`indexion grep --semantic=proxy` detects the same proxy functions as `plan unwrap`,
+but without the auto-fix capability. Use `grep` for quick discovery during
+development, `plan unwrap` when you want to take action:
+
+```bash
+# Quick check: any new proxy functions?
+indexion grep --semantic=proxy src/
+
+# Ready to fix: preview and apply
+indexion plan unwrap --dry-run --include='*.mbt' src/
+indexion plan unwrap --fix --include='*.mbt' src/
+```
+
 ## Tips
 
 - **Always --dry-run first**: Review what will change before applying `--fix`.

@@ -81,6 +81,19 @@ pairs; for large datasets it falls back to TF-IDF only.
 2. If high-similarity pairs exist, run `indexion plan refactor --threshold=0.9 <path>` for details
 3. Fix duplicates, then re-run both to verify
 
+## Relationship to grep
+
+`indexion grep` provides targeted structural search; `explore` provides broad
+similarity analysis. They complement each other:
+
+| Task | Use |
+|------|-----|
+| "Find files similar to X" | `explore --format=list` |
+| "Find nested for loops" | `grep "for ... for"` |
+| "Find functions named sort" | `grep --semantic=name:sort` |
+| "What files overlap?" | `explore --format=cluster` |
+| "Find code similar to a description" | `grep --semantic="similar:..."` |
+
 ## Tips
 
 - **moon.pkg files** inflate similarity scores (they all look alike) — exclude

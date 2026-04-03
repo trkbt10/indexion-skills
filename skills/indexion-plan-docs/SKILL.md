@@ -55,11 +55,23 @@ indexion plan documentation -o=doc-plan.md <path>
 Public item detection uses **KGF tokenization** (language-agnostic):
 - Detects visibility keywords (`pub`, `public`, `export`) followed by declaration
   keywords (`fn`, `struct`, `class`, `enum`, `type`, `trait`, etc.)
+- Correctly handles visibility modifiers like `pub(all)`, `pub(readonly)`, `pub(open)`
 - Associates `///` doc comments with the declarations they precede
+- Applies KGF ignore patterns (e.g. `*_test.mbt`, `*_wbtest.mbt`) to skip test files
 - Works for any language with a KGF spec — not hardcoded to MoonBit
+
+## Relationship to grep
+
+`indexion grep --undocumented` provides a quick per-file listing of undocumented
+pub declarations. `plan documentation` provides a comprehensive coverage report
+with percentages, package breakdown, and prioritized action items.
+
+Use `grep --undocumented` for quick checks during development.
+Use `plan documentation` for release readiness or documentation sprints.
 
 ## Workflow
 
 1. Run `indexion plan documentation --style=coverage <path>` for a quick overview
 2. Run `indexion plan documentation <path>` for a full plan with action items
 3. Use `--format=github-issue` to create tracking issues
+4. Run `indexion grep --undocumented <path>` for a quick per-file check

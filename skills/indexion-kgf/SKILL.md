@@ -58,6 +58,22 @@ indexion kgf edges fixtures/project/npm/package.json
 | `--spec=NAME` | auto-detect | KGF spec name to use |
 | `--kgf-dir=PATH` | kgfs | KGF specs directory |
 
+## Relationship to grep
+
+`indexion grep` uses KGF tokenization under the hood. When debugging why a grep
+pattern doesn't match, use `kgf tokens` to inspect the actual token stream:
+
+```bash
+# See what tokens indexion produces for a file
+indexion kgf tokens src/config/paths.mbt
+
+# Then verify your grep pattern matches those token kinds
+indexion grep "KW_pub KW_fn Ident" src/config/paths.mbt
+```
+
+Pattern aliases (`pub` → `KW_pub`) are derived from KGF spec `=== lex` section
+keyword patterns. Use `kgf inspect` to verify the mapping.
+
 ## Workflow
 
 1. Run `indexion kgf inspect <file>` to see the full processing pipeline
