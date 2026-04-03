@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Claude Code skills powered by indexion",
-    "version": "0.1.0"
+    "version": "0.5.0"
   },
   "plugins": [
     {
       "name": "indexion-skills",
       "source": "./",
       "description": "Source code exploration, similarity analysis, and documentation skills powered by indexion",
-      "version": "0.1.0",
+      "version": "0.5.0",
       "author": { "name": "trkbt10" },
       "repository": "https://github.com/trkbt10/indexion-skills",
       "license": "Apache-2.0",
