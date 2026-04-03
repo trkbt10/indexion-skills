@@ -19,7 +19,7 @@ Analyze file similarity across a directory to find duplicates and related code.
 ## Usage
 
 ```bash
-# Basic similarity matrix
+# Basic similarity matrix (default: tfidf strategy)
 indexion explore <path>
 
 # List format with threshold (most useful for finding duplicates)
@@ -35,7 +35,7 @@ indexion explore --format=json --threshold=0.5 <path>
 indexion explore --ext=.mbt --ext=.ts <path>
 
 # Include/exclude patterns
-indexion explore --include=*.ts --exclude=*_test.ts src/
+indexion explore --include='*.ts' --exclude='*_test.ts' src/
 
 # Filter out config noise
 indexion explore --format=list --threshold=0.7 \
@@ -44,21 +44,20 @@ indexion explore --format=list --threshold=0.7 \
 # Function-level tree edit distance (more precise, slower)
 indexion explore --strategy=apted --format=list <path>
 indexion explore --strategy=tsed --format=list <path>
+
+# Hybrid strategy (auto-selects TF-IDF or APTED based on dataset size)
+indexion explore --strategy=hybrid --format=list <path>
 ```
 
 ## Strategies
 
 | Strategy | Description | Speed |
 |----------|-------------|-------|
-| `hybrid` (default) | Dynamic TF-IDF + APTED, auto-selects based on dataset size | Adaptive |
-| `tfidf` | TF-IDF token similarity only | Fast |
+| `tfidf` (default) | TF-IDF token similarity | Fast |
+| `hybrid` | Dynamic TF-IDF + APTED, auto-selects based on dataset size | Adaptive |
 | `ncd` | Normalized Compression Distance | Fast |
 | `apted` | All-Path Tree Edit Distance (function-level) | Slow |
 | `tsed` | Tree Structure Edit Distance (function-level) | Slow |
-
-The **hybrid** strategy dynamically switches between TF-IDF and APTED based on
-file count and tree complexity. For small datasets it uses precise APTED on all
-pairs; for large datasets it falls back to TF-IDF only.
 
 ## Output Formats
 
@@ -67,36 +66,27 @@ pairs; for large datasets it falls back to TF-IDF only.
 - `cluster` — Groups of similar files
 - `json` — Machine-readable output
 
+## Relationship to Other Commands
+
+| Task | Use |
+|------|-----|
+| "What files are similar?" | `explore --format=list` |
+| "Find nested for loops" | `grep "for ... for"` |
+| "Find functions named sort" | `grep --semantic=name:sort` |
+| "What exactly is duplicated?" | `plan refactor --threshold=0.9` |
+| "Find code similar to a description" | `grep --semantic="similar:..."` |
+
 ## Workflow: explore → plan refactor
-
-`explore` and `plan refactor` are complementary:
-
-| | `explore` | `plan refactor` |
-|---|-----------|-----------------|
-| Speed | Fast overview | Deeper analysis |
-| Output | Similarity pairs | Duplicate blocks with line numbers |
-| Use | "What's similar?" | "What exactly is duplicated and how to fix it?" |
 
 1. Run `indexion explore --format=list --threshold=0.7 <path>` for a quick scan
 2. If high-similarity pairs exist, run `indexion plan refactor --threshold=0.9 <path>` for details
 3. Fix duplicates, then re-run both to verify
 
-## Relationship to grep
-
-`indexion grep` provides targeted structural search; `explore` provides broad
-similarity analysis. They complement each other:
-
-| Task | Use |
-|------|-----|
-| "Find files similar to X" | `explore --format=list` |
-| "Find nested for loops" | `grep "for ... for"` |
-| "Find functions named sort" | `grep --semantic=name:sort` |
-| "What files overlap?" | `explore --format=cluster` |
-| "Find code similar to a description" | `grep --semantic="similar:..."` |
-
-## Tips
+## Dogfooding Lessons
 
 - **moon.pkg files** inflate similarity scores (they all look alike) — exclude
   with `--exclude='*moon.pkg*'` for meaningful results
 - **96%+ similarity** between CLI files usually means duplicated utility functions
 - **85-95% similarity** is often structural (same CLI patterns) — not always actionable
+- **types.mbt files** showing 100% similarity is normal — type definition files
+  share structural patterns (pub struct + getters) that inflate TF-IDF scores

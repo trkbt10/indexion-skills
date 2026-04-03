@@ -150,7 +150,7 @@ adds auto-fix capability. Use `grep` for quick discovery, `plan unwrap` for acti
 ```bash
 # After writing new code, check for patterns that need attention:
 
-# 1. Find potential O(n²) sorts
+# 1. Find potential O(n²) sorts (nested loops)
 indexion grep "for ... for" src/
 
 # 2. Check for undocumented public API
@@ -162,6 +162,28 @@ indexion grep --semantic=proxy src/
 # 4. Find overly long functions
 indexion grep --semantic=long:50 src/
 
-# 5. Search for specific refactoring targets
+# 5. Search for specific refactoring targets by similarity
 indexion grep --semantic="similar:extract substring" src/
+
+# 6. Trace all references to a type before moving it
+indexion grep "TypeIdent:TfidfEmbeddingProvider" src/
+
+# 7. Find all sort-related functions across the codebase
+indexion grep --semantic=name:sort src/
+
+# 8. Verify a refactoring didn't leave orphan references
+indexion grep "Ident:old_function_name" src/ cmd/indexion/
 ```
+
+## Dogfooding Lessons
+
+- **Use instead of Explore agent**: `grep "TypeIdent:X"` is faster and more
+  precise than spawning an agent to search for a type definition.
+- **Alias resolution is automatic**: You don't need to know that `pub` maps to
+  `KW_pub` — just write the keyword as it appears in source code.
+- **`...` is non-greedy**: `for ... for` finds the closest pair of for loops,
+  not the furthest. This is usually what you want for finding nesting.
+- **Vector search quality**: `--semantic="similar:..."` works best with descriptive
+  phrases. "parse JSON configuration" works better than just "json".
+- **Combine with plan refactor**: Use `grep --semantic=name:X` to find all
+  instances before consolidating, then `plan refactor` to verify they're gone.

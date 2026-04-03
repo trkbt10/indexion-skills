@@ -13,6 +13,8 @@ Inspect and debug KGF language specs by viewing tokens, parse events, and extrac
 - User is developing or modifying a KGF spec
 - User asks "how does indexion parse this file?"
 - Verifying that tokenization/parsing works correctly for a language
+- **Debugging grep patterns**: when a grep pattern doesn't match, use
+  `kgf tokens` to see the actual token kinds
 
 ## Subcommands
 
@@ -60,19 +62,29 @@ indexion kgf edges fixtures/project/npm/package.json
 
 ## Relationship to grep
 
-`indexion grep` uses KGF tokenization under the hood. When debugging why a grep
-pattern doesn't match, use `kgf tokens` to inspect the actual token stream:
+`indexion grep` uses KGF tokenization under the hood. Pattern aliases
+(`pub` → `KW_pub`) are derived from the `=== lex` section of KGF specs.
+
+When a grep pattern doesn't match as expected:
 
 ```bash
-# See what tokens indexion produces for a file
+# 1. See the actual tokens for a file
 indexion kgf tokens src/config/paths.mbt
 
-# Then verify your grep pattern matches those token kinds
+# 2. Check which token kinds exist
+indexion kgf tokens src/config/paths.mbt | head -20
+
+# 3. Then adjust your grep pattern to match the actual token kinds
 indexion grep "KW_pub KW_fn Ident" src/config/paths.mbt
 ```
 
-Pattern aliases (`pub` → `KW_pub`) are derived from KGF spec `=== lex` section
-keyword patterns. Use `kgf inspect` to verify the mapping.
+Common token kinds (MoonBit):
+- `KW_pub`, `KW_fn`, `KW_struct`, `KW_enum`, `KW_type`, `KW_trait`, `KW_let`, `KW_for`
+- `Ident` (lowercase identifiers), `TypeIdent` (PascalCase type names)
+- `LPAREN`, `RPAREN`, `LBRACE`, `RBRACE`, `LBRACKET`, `RBRACKET`
+- `NL` (newline), `SKIP` (whitespace — filtered from grep patterns)
+- `DocComment`, `DocLine`, `DocSection`, `LineComment`, `BlockComment`
+- `String`, `Number`, `Char`
 
 ## Workflow
 

@@ -36,10 +36,13 @@ indexion plan refactor --strategy=hybrid <path>
 indexion plan refactor --format=github-issue <path>
 
 # Filter files
-indexion plan refactor --include=*.mbt --exclude=*_test.mbt <path>
+indexion plan refactor --include='*.mbt' --exclude='*_test.mbt' <path>
 
 # Output to file
 indexion plan refactor -o=refactor-plan.md <path>
+
+# Multiple directories
+indexion plan refactor src/ cmd/indexion/
 ```
 
 ## Options
@@ -47,18 +50,19 @@ indexion plan refactor -o=refactor-plan.md <path>
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--threshold=FLOAT` | 0.7 | Minimum similarity threshold |
-| `--strategy=NAME` | hybrid | Similarity strategy: hybrid, tfidf, ncd, apted, tsed |
+| `--strategy=NAME` | hybrid | Similarity strategy: hybrid, tfidf, ncd |
 | `--style=STYLE` | raw | Output style: raw, structured |
 | `--format=FORMAT` | md | Output format: md, json, text, github-issue |
 | `--name=NAME` | — | Project name (for structured style) |
 | `--include=PATTERN` | — | Include pattern (repeatable) |
 | `--exclude=PATTERN` | — | Exclude pattern (repeatable) |
-| `--output=FILE, -o=` | stdout | Output file path |
+| `-o, --output=FILE` | stdout | Output file path |
+| `--specs-dir=DIR` | kgfs | KGF specs directory |
 
 ## Dogfooding Workflow (Proven)
 
-This workflow was validated by using indexion on itself to eliminate 53+ duplicate
-utility functions across 12 CLI packages.
+This workflow was validated by using indexion on itself to eliminate 10+
+duplicate utility functions and resolve a circular dependency.
 
 ### Step 1: Detect duplicates
 
@@ -86,36 +90,41 @@ Focus on **three sections**:
 - These are the highest-value targets (easiest to fix, clearest wins)
 - Example: `get_global_data_dir ≈ get_global_cache_dir` → extract `resolve_os_dir`
 
-### Step 3: Fix and verify
+### Step 3: Use grep to trace references before fixing
+
+```bash
+# Find all references to a type/function before moving it
+indexion grep "TypeIdent:TfidfEmbeddingProvider" src/
+
+# Find all functions named "substr" to plan consolidation
+indexion grep --semantic=name:substr src/
+```
+
+### Step 4: Fix and verify
 
 After consolidating duplicates, re-run with the same threshold to confirm
-they no longer appear. Lower the threshold to find more candidates:
+they no longer appear:
+
+```bash
+indexion plan refactor --threshold=0.9 --include='*.mbt' ...
+```
+
+### Step 5: Lower threshold and iterate
 
 ```bash
 # After fixing 90%+ duplicates, look for 85%+ matches
 indexion plan refactor --threshold=0.85 --include='*.mbt' ...
 ```
 
-### Step 4: Iterate
+## What Remains After Cleanup
 
-Repeat steps 1-3 with progressively lower thresholds until only
-structural patterns remain (CLI boilerplate, doc comment headers).
+When all actionable duplicates are fixed, you'll see only these in the output:
+- **Platform stubs** (`native.mbt` / `stub.mbt`) — intentional platform branching
+- **Type method similarity** (`to_string` on different types) — different types, same pattern
+- **CLI command boilerplate** (`command()` functions) — @argparse API pattern, not duplication
+- **Semantic-but-different** functions (`is_disqualifying_keyword` ≈ `is_skip_token`) — different purpose
 
-## Relationship to grep
-
-`indexion grep` complements `plan refactor` for targeted searches:
-
-```bash
-# Find specific duplication patterns
-indexion grep --semantic=name:sort src/          # Find all "sort" functions
-indexion grep --semantic=proxy src/              # Find proxy functions
-indexion grep "for ... for" src/                 # Find nested loops
-
-# After plan refactor identifies duplicates, use grep to find all references
-indexion grep "TypeIdent:TfidfEmbeddingProvider" src/
-```
-
-Use `grep` for **targeted discovery**, `plan refactor` for **comprehensive analysis**.
+These are signals to stop iterating, not bugs to fix.
 
 ## Tips
 
@@ -123,9 +132,12 @@ Use `grep` for **targeted discovery**, `plan refactor` for **comprehensive analy
   to focus on actual code duplication rather than config/test similarity.
 - **Start high**: Begin with `--threshold=0.9` and work down. Low thresholds
   produce huge result sets that are hard to act on.
-- **Combine with grep**: Use `indexion grep --semantic=name:X` to find all
-  functions with a specific name, or `grep --semantic=proxy` to find wrappers.
+- **Use grep first**: `indexion grep --semantic=name:X` finds all functions with
+  a specific name. `grep --semantic=proxy` finds wrappers. Use for targeted
+  investigation before running the full plan.
+- **Circular dependencies**: If `plan refactor` shows cross-package duplication
+  caused by circular imports, use `indexion grep "TypeIdent:X"` to map all
+  references, then move the type to break the cycle (as was done with `Sentence`
+  → `segmentation/types`).
 - **Combine with explore**: Use `indexion explore --format=list` first to get
   a quick similarity overview, then use `plan refactor` for actionable detail.
-- **Per-pair detail**: The output shows exact line numbers and function names
-  for each duplicate block — use these to navigate directly to the code.

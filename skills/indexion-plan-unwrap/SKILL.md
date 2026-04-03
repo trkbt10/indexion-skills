@@ -16,16 +16,16 @@ callers with direct calls to the delegate.
 - User asks "which functions just delegate to another?"
 - **After writing new code** — dogfood to catch accidental proxy accumulation
 
-## Relationship to plan refactor
+## Relationship to Other Commands
 
-`plan refactor` detects structural similarity between files and functions.
-`plan unwrap` complements it by detecting a specific anti-pattern:
-functions whose body is a single forwarding call with no added logic.
+| Command | Detects proxies? | Auto-fix? | When to use |
+|---------|-----------------|-----------|-------------|
+| `grep --semantic=proxy` | Yes | No | Quick check during development |
+| `plan unwrap` (default) | Yes | No | Detailed report with line numbers |
+| `plan unwrap --dry-run` | Yes | Preview | Review before applying changes |
+| `plan unwrap --fix` | Yes | Yes | Apply fixes to source files |
 
-**Recommended workflow:**
-1. `plan unwrap --dry-run` — identify and preview trivial wrappers
-2. `plan unwrap --fix` — auto-remove them
-3. `plan refactor` — re-run to find remaining real duplicates (with less noise)
+Use `grep --semantic=proxy` for quick discovery, `plan unwrap` for action.
 
 ## Modes
 
@@ -69,7 +69,8 @@ indexion plan unwrap -o=unwrap.md --include='*.mbt' <path>
 | `--include=PATTERN` | — | Include pattern (repeatable) |
 | `--exclude=PATTERN` | — | Exclude pattern (repeatable) |
 | `--format=FORMAT` | md | Output format: md, json, text |
-| `--output=FILE, -o=` | stdout | Output file path |
+| `-o, --output=FILE` | stdout | Output file path |
+| `--specs-dir=DIR` | kgfs | KGF specs directory |
 
 ## What Gets Detected
 
@@ -105,49 +106,39 @@ fn emit(value : String) -> Action {
 ## Dogfooding Workflow
 
 ```bash
-# Step 1: Preview wrappers to remove
+# Step 1: Quick check with grep
+indexion grep --semantic=proxy src/
+
+# Step 2: Detailed preview
 indexion plan unwrap --dry-run \
   --include='*.mbt' --exclude='*_wbtest.mbt' \
   --exclude='*moon.pkg*' --exclude='*pkg.generated*' \
   src/
 
-# Step 2: Review the output — check each wrapper is truly unnecessary
+# Step 3: Review — check each wrapper is truly unnecessary
 
-# Step 3: Apply fixes
+# Step 4: Apply fixes
 indexion plan unwrap --fix \
   --include='*.mbt' --exclude='*_wbtest.mbt' \
   --exclude='*moon.pkg*' --exclude='*pkg.generated*' \
   src/
 
-# Step 4: Run tests to verify
+# Step 5: Run tests to verify
 moon test --target native
 
-# Step 5: Re-run plan refactor to see cleaner results
+# Step 6: Re-run plan refactor to see cleaner results
 indexion plan refactor --threshold=0.9 \
   --include='*.mbt' --exclude='*_wbtest.mbt' \
   src/
 ```
 
-## Relationship to grep
-
-`indexion grep --semantic=proxy` detects the same proxy functions as `plan unwrap`,
-but without the auto-fix capability. Use `grep` for quick discovery during
-development, `plan unwrap` when you want to take action:
-
-```bash
-# Quick check: any new proxy functions?
-indexion grep --semantic=proxy src/
-
-# Ready to fix: preview and apply
-indexion plan unwrap --dry-run --include='*.mbt' src/
-indexion plan unwrap --fix --include='*.mbt' src/
-```
-
-## Tips
+## Dogfooding Lessons
 
 - **Always --dry-run first**: Review what will change before applying `--fix`.
-- **Exclude test files**: `--exclude='*_wbtest.mbt'` avoids touching test code.
-- **Platform wrappers**: FFI wrappers (e.g. `encode_bytes` → `@utf8.encode`)
-  may be intentional abstraction layers. Review before removing.
+- **Platform wrappers are intentional**: FFI wrappers (e.g. `encode_bytes` →
+  `@utf8.encode`) or `@osenv_path` wrappers in `config/paths.mbt` are abstraction
+  layers, not accidental indirection. Review before removing.
 - **Public API wrappers**: If a wrapper is `pub` and used by external packages,
   removing it is a breaking change. Check visibility before fixing.
+- **grep first**: `indexion grep --semantic=proxy src/` gives a quick count.
+  If there are only a few, manual review may be faster than `--fix`.
