@@ -34,6 +34,12 @@ curl -fsSL https://raw.githubusercontent.com/trkbt10/indexion/main/install.sh | 
 |-------|---------|-------------|
 | `indexion-doc` | `indexion doc` | Generate dependency graphs and READMEs |
 
+### Spec-Driven Development
+
+| Skill | Command | Description |
+|-------|---------|-------------|
+| `indexion-sdd` | `indexion spec *` | SDD validation loop: draft, verify, align, validate with cc-sdd/codex |
+
 ### Planning
 
 | Skill | Command | Description |
@@ -56,6 +62,7 @@ indexion-skills/
 │   ├── indexion-segment/     # Text segmentation
 │   ├── indexion-kgf/         # KGF spec inspection
 │   ├── indexion-doc/         # Dependency graphs & READMEs
+│   ├── indexion-sdd/         # Spec-Driven Development loop
 │   ├── indexion-plan-refactor/
 │   ├── indexion-plan-docs/
 │   ├── indexion-plan-reconcile/
