@@ -192,7 +192,7 @@ Reports are saved to `.indexion/sdd-reports/<feature>/`.
 |----------|---------|-------------|
 | `INDEXION_DIR` | (none) | Path to indexion repo (or `indexion` in PATH) |
 | `SDD_THRESHOLD` | `0.3` | Similarity threshold for spec align |
-| `SDD_IMPL_DIR` | auto-detect | Implementation directory (falls back to design.md → `src/lib`) |
+| `SDD_IMPL_DIR` | auto-detect | Implementation directory (auto-detects from design.md, errors if unresolvable) |
 
 ## sdd-pipeline.sh — Full Autonomous Pipeline
 
