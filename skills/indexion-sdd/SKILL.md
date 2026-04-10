@@ -186,6 +186,14 @@ INDEXION_DIR=~/path/to/indexion ./scripts/sdd-validate.sh <feature> --fix
 
 Reports are saved to `.indexion/sdd-reports/<feature>/`.
 
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `INDEXION_DIR` | (none) | Path to indexion repo (or `indexion` in PATH) |
+| `SDD_THRESHOLD` | `0.3` | Similarity threshold for spec align |
+| `SDD_IMPL_DIR` | auto-detect | Implementation directory (falls back to design.md → `src/lib`) |
+
 ## sdd-pipeline.sh — Full Autonomous Pipeline
 
 Runs all 5 phases (requirements → design → tasks → impl → validate)
