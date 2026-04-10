@@ -188,29 +188,55 @@ Reports are saved to `.indexion/sdd-reports/<feature>/`.
 
 ## Dogfooding Lessons
 
-These findings came from implementing RFC 6901 (JSON Pointer) and RFC 7396 (JSON Merge Patch):
+Findings from RFC 6901, RFC 7396, RFC 7807, and RFC 2397 implementation:
 
-- **search precision**: Broad scope missed relevant files — fixed by adding
-  file-level summary documents with path segment tokenization.
+### Scoring & Matching (spec align)
 
-- **spec draft profile was dead code**: `--profile` existed but was ignored.
-  Fixed to use KGF spec semantics for criteria extraction.
+- **BM25 replaces TF-IDF**: BM25's document length normalization gives
+  stable scores when comparing short criteria against long code declarations.
+- **Per-criterion boost**: Each acceptance criterion is scored individually
+  against each implementation via BM25. Best criterion score lifts the
+  requirement if it exceeds the whole-text score.
+- **Identifier direct match**: Backtick-enclosed identifiers from criteria
+  are extracted and matched against implementation names and body + doc.
+  Unicode-safe `extract_alnum` strips punctuation while preserving CJK/etc.
+- **Kneedle disabled for spec verify**: All gap candidates are returned.
+  Spec compliance checking treats every gap as signal, not noise.
+- **Strict kind matching for gaps**: `Ident:status` in spec must match
+  `Ident:status` in impl (not `TEXT:status`).
 
-- **Hardcoded list patterns**: Removed `"- "`, `"* "` patterns in favor of
-  KGF `collectLinesAfterPrefixes` from `sdd-numbered-requirement.kgf`.
+### KGF Fixes
 
-- **spec draft N.M IDs**: Output now uses `### Requirement N:` / `#### N.M:`
-  hierarchy matching cc-sdd's expected format.
+- **MoonBit DocBlock order**: `DocBlock -> (DocLine NL)* NL* DocComment`.
+  MoonBit convention is `///` lines before `///|` marker, with optional
+  blank lines between. Previous definition was inverted.
+- **Longest declaration span**: `best_declaration_span` now prefers the
+  longest span (signature + body), not shortest (body only).
+- **Numbered criteria in SDD KGF**: Added `"1."`-`"9."` prefixes to
+  `collectLinesAfterPrefixes` so cc-sdd's numbered acceptance criteria
+  are extracted.
 
-- **spec verify Kneedle over-filtering**: High vocabulary distance caused
-  Kneedle to discard nearly all gaps. Fixed with a minimum cutoff floor.
+### Process & Tooling
 
-- **search graph-build overhead**: TF-IDF search no longer triggers CodeGraph
-  construction — eliminates `[N/M] Analyzing:` per-file progress.
-
-- **NO-GO → fix loop**: On RFC 7396, codex missed failure boundary handling.
-  The validation loop caught it (NO-GO tasks=1.1,3.2), auto-fixed via
-  `spec-impl` re-run, and passed on retry.
-
+- **NO-GO → fix loop works**: On every RFC tested, codex's initial
+  implementation had gaps. The validation loop caught them, auto-fixed
+  via `spec-impl` re-run, and passed on retry.
+- **Mandatory gate rules**: indexion `status=fail` forces NO-GO.
+  codex must add spec vocabulary to code (doc comments, test names,
+  function names) to make the alignment tool pass. This is not
+  cosmetic — it creates the traceable link between spec and code.
 - **Don't work around broken tools**: Fix the tool, not the workflow.
-  This principle is now in CLAUDE.md.
+  This principle is in CLAUDE.md.
+- **Graph cache for search**: File-hash-based cache for CodeGraph
+  avoids rebuilding on unchanged files.
+- **`spec draft` profile**: Uses KGF spec semantics for criteria
+  extraction. `N.M` hierarchical IDs match cc-sdd format.
+
+### Validated RFCs
+
+| RFC | Tests | Cycles to GO | Key Issue Found |
+|-----|-------|-------------|-----------------|
+| 6901 JSON Pointer | 15 | 1 | search precision, spec draft dead code |
+| 7396 JSON Merge Patch | 9 | 2 | failure boundary not implemented |
+| 7807 Problem Details | 15 | 3 | public API boundary exposure |
+| 2397 data: URL | 16 | 3 | DocBlock order, scope constraints traceability |
