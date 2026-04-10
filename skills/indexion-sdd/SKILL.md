@@ -178,10 +178,10 @@ Place in `scripts/sdd-validate.sh` at the project root. Requires:
 
 ```bash
 # Validate only
-INDEXION_DIR=~/path/to/indexion ./scripts/sdd-validate.sh <feature>
+SDD_THRESHOLD=0.3 SDD_IMPL_DIR=src/lib INDEXION_DIR=~/path/to/indexion ./scripts/sdd-validate.sh <feature>
 
 # Validate + auto-fix
-INDEXION_DIR=~/path/to/indexion ./scripts/sdd-validate.sh <feature> --fix
+SDD_THRESHOLD=0.3 SDD_IMPL_DIR=src/lib INDEXION_DIR=~/path/to/indexion ./scripts/sdd-validate.sh <feature> --fix
 ```
 
 Reports are saved to `.indexion/sdd-reports/<feature>/`.
@@ -191,7 +191,7 @@ Reports are saved to `.indexion/sdd-reports/<feature>/`.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `INDEXION_DIR` | (none) | Path to indexion repo (or `indexion` in PATH) |
-| `SDD_THRESHOLD` | `0.3` | Similarity threshold for spec align |
+| `SDD_THRESHOLD` | (required) | Similarity threshold for spec align — no universal default; choose based on spec granularity and language |
 | `SDD_IMPL_DIR` | auto-detect | Implementation directory (auto-detects from design.md, errors if unresolvable) |
 
 ## sdd-pipeline.sh — Full Autonomous Pipeline
@@ -201,13 +201,13 @@ via codex, with indexion gates between each step.
 
 ```bash
 # Full pipeline from scratch
-INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature>
+SDD_THRESHOLD=0.3 SDD_IMPL_DIR=src/lib INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature>
 
 # Resume from a specific phase
-INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature> impl
+SDD_THRESHOLD=0.3 SDD_IMPL_DIR=src/lib INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature> impl
 
 # Validate only (re-run after auto-fix)
-INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature> validate
+SDD_THRESHOLD=0.3 SDD_IMPL_DIR=src/lib INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature> validate
 ```
 
 ### Auto-Fix with Spec Alignment Context
