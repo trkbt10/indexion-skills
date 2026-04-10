@@ -186,9 +186,62 @@ INDEXION_DIR=~/path/to/indexion ./scripts/sdd-validate.sh <feature> --fix
 
 Reports are saved to `.indexion/sdd-reports/<feature>/`.
 
+## sdd-pipeline.sh — Full Autonomous Pipeline
+
+Runs all 5 phases (requirements → design → tasks → impl → validate)
+via codex, with indexion gates between each step.
+
+```bash
+# Full pipeline from scratch
+INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature>
+
+# Resume from a specific phase
+INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature> impl
+
+# Validate only (re-run after auto-fix)
+INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature> validate
+```
+
+### Auto-Fix with Spec Alignment Context
+
+When the validate phase produces NO-GO, the auto-fix re-runs `spec-impl`
+with augmented context that includes the spec alignment reports. This is
+critical: without the alignment context, codex sees "implementation is
+correct" and makes no changes, leaving the alignment gate stuck at fail.
+
+The augmented auto-fix prompt includes:
+- The SPEC_ONLY items from `spec align diff`
+- The vocabulary gaps from `spec verify`
+- The alignment status (`status=fail`)
+- Explicit instruction to add spec vocabulary to doc comments and test names
+
+Without this augmentation, the auto-fix loop cannot close vocabulary gaps.
+
+## Multi-Language Support
+
+The SDD pipeline works with any language that has a KGF spec. Verified languages:
+
+| Language | Doc Token | Notes |
+|----------|-----------|-------|
+| MoonBit | `///\|` + `///` | DocBlock order matters: `///\|` first |
+| TypeScript | `/** */` | ExportDecl requires bind/scope for doc propagation |
+| Python | `"""docstring"""` | Suite docstring requires bind/scope propagation |
+| JavaScript (JSX) | `/** */` | Same ExportDecl pattern as TypeScript |
+| Go, Rust, Swift, etc. | Various | PEG Item ordering fixed for all languages |
+
+### Language-Specific KGF Requirements for SDD
+
+For spec align to work, the KGF must:
+1. **Capture doc comments in declares edges** — `doc` must be non-empty
+2. **Use correct PEG alternative ordering** — DocComment must be after
+   declaration rules in the Item alternatives
+3. **Handle NL between doc and keyword** — `NL?` or `NL*` after `doc:DocComment?`
+
+If `kgf edges <file>` shows declares without `doc=`, the KGF needs fixing.
+
 ## Dogfooding Lessons
 
-Findings from RFC 6901, RFC 7396, RFC 7807, and RFC 2397 implementation:
+Findings from 7 RFC implementations across 3 languages:
 
 ### Scoring & Matching (spec align)
 
@@ -205,11 +258,35 @@ Findings from RFC 6901, RFC 7396, RFC 7807, and RFC 2397 implementation:
 - **Strict kind matching for gaps**: `Ident:status` in spec must match
   `Ident:status` in impl (not `TEXT:status`).
 
-### KGF Fixes
+### KGF Fixes (Cross-Language)
 
-- **MoonBit DocBlock order**: `DocBlock -> (DocLine NL)* NL* DocComment`.
-  MoonBit convention is `///` lines before `///|` marker, with optional
-  blank lines between. Previous definition was inverted.
+- **PEG Item ordering (13 languages)**: DocComment must appear AFTER
+  declaration rules in the `Item` alternatives. In PEG, first-match-wins —
+  a standalone DocComment alternative before FuncDecl will consume doc
+  comments that should be attached to the following declaration.
+  Fixed: Go, Haskell, Lua, OCaml, Rust, Scala, Zig, TypeScript,
+  TypeScript-JSX, JavaScript-JSX, C#, Dart, Java, Kotlin, PHP, Swift, C, C++.
+- **NL between doc and keyword**: Declaration rules need `NL?` or `NL*`
+  between `doc:DocComment?` and the keyword (e.g., `KW_fn`). Without it,
+  a newline between the doc comment and `export` prevents matching.
+- **ExportDecl doc propagation (TypeScript/JS family)**: ExportDecl
+  consumes the DocComment, but child FunctionDecl emits the declares edge.
+  Fix: child rules bind id/kind/doc to scope, ExportDecl re-emits the
+  declares edge with its own doc when `$doc` is present.
+- **Python Decorator args**: `@dataclass(frozen=True)` has arguments after
+  the decorator name. Added `DecoratorLine` rule to consume `(args)`.
+- **Python Suite docstring propagation**: Docstrings are inside the Suite
+  body. Suite/ClassSuite bind doc to scope, FunctionDef/ClassDef retrieve
+  it via `$scope("value", "suite_doc")`.
+- **OCaml/Haskell EQ/Operator token conflict**: Generic `Operator` regex
+  includes `=`, consuming it before `EQ` token. Fix: move specific
+  punctuation tokens (EQ, PIPE, COLON) before generic Operator.
+- **Haskell FunctionDecl equation form**: Second alternative
+  (`func_id:VarIdent Pattern* EQ Expr`) lacked `doc:DocComment? NL?`.
+- **MoonBit DocBlock `///|` first ordering**: MoonBit convention places
+  `///|` (block marker) before `///` (content), but DocBlock grammar only
+  accepted `///` before `///|`. Added `DocComment NL ( DocLine NL )*` as
+  first alternative.
 - **Longest declaration span**: `best_declaration_span` now prefers the
   longest span (signature + body), not shortest (body only).
 - **Numbered criteria in SDD KGF**: Added `"1."`-`"9."` prefixes to
@@ -218,15 +295,22 @@ Findings from RFC 6901, RFC 7396, RFC 7807, and RFC 2397 implementation:
 
 ### Process & Tooling
 
-- **NO-GO → fix loop works**: On every RFC tested, codex's initial
-  implementation had gaps. The validation loop caught them, auto-fixed
-  via `spec-impl` re-run, and passed on retry.
-- **Mandatory gate rules**: indexion `status=fail` forces NO-GO.
-  codex must add spec vocabulary to code (doc comments, test names,
-  function names) to make the alignment tool pass. This is not
-  cosmetic — it creates the traceable link between spec and code.
+- **Spec vocabulary is mandatory, not cosmetic**: indexion `status=fail`
+  forces NO-GO. codex must add spec vocabulary to code (doc comments,
+  test names, function names) to make the alignment tool pass. This
+  creates the traceable link between spec and code that the alignment
+  tool measures.
+- **Auto-fix needs alignment context**: The original auto-fix used plain
+  `spec-impl` prompts. codex saw "implementation correct, no changes needed"
+  and the loop never converged. Fix: inject spec align diff, verify, and
+  status reports into the auto-fix prompt with explicit instructions to
+  add spec vocabulary to doc comments.
+- **NO-GO → fix → validate loop works**: With the augmented auto-fix
+  prompt, codex adds doc comments with spec vocabulary, and the alignment
+  gate passes on retry. Typical: 1-2 fix cycles after initial impl.
 - **Don't work around broken tools**: Fix the tool, not the workflow.
-  This principle is in CLAUDE.md.
+  When `kgf edges` doesn't show doc, fix the KGF — don't manually write
+  doc comments to compensate.
 - **Graph cache for search**: File-hash-based cache for CodeGraph
   avoids rebuilding on unchanged files.
 - **`spec draft` profile**: Uses KGF spec semantics for criteria
@@ -234,9 +318,12 @@ Findings from RFC 6901, RFC 7396, RFC 7807, and RFC 2397 implementation:
 
 ### Validated RFCs
 
-| RFC | Tests | Cycles to GO | Key Issue Found |
-|-----|-------|-------------|-----------------|
-| 6901 JSON Pointer | 15 | 1 | search precision, spec draft dead code |
-| 7396 JSON Merge Patch | 9 | 2 | failure boundary not implemented |
-| 7807 Problem Details | 15 | 3 | public API boundary exposure |
-| 2397 data: URL | 16 | 3 | DocBlock order, scope constraints traceability |
+| RFC | Language | Tests | Cycles to GO | Key Issue Found |
+|-----|----------|-------|-------------|-----------------|
+| 6901 JSON Pointer | MoonBit | 15 | 1 | search precision, spec draft dead code |
+| 7396 JSON Merge Patch | MoonBit | 9 | 2 | failure boundary not implemented |
+| 7807 Problem Details | MoonBit | 15 | 3 | public API boundary exposure |
+| 2397 data: URL | MoonBit | 16 | 3 | DocBlock order, scope constraints traceability |
+| 8288 Web Linking | TypeScript | 10 | 1 | PEG Item ordering, ExportDecl doc propagation |
+| 6838 Media Type | Python | 22 | 1 | Decorator args, Suite docstring propagation |
+| 3986 URI | MoonBit | 11 | 2 | DocBlock `///\|` first, auto-fix prompt gap |

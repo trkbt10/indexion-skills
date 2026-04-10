@@ -91,3 +91,78 @@ Common token kinds (MoonBit):
 1. Run `indexion kgf inspect <file>` to see the full processing pipeline
 2. If something looks wrong, drill down with `tokens`, `events`, or `edges`
 3. Compare with the KGF spec file (`kgfs/<lang>.kgf`) to diagnose issues
+
+## KGF Development Pitfalls
+
+Common bugs found when writing or modifying KGF specs:
+
+### PEG Item Ordering (first-match-wins)
+
+KGF uses PEG parsing. In `Item -> A / B / C`, if A matches, B and C are
+never tried. DocComment as a standalone alternative **before** declaration
+rules will consume doc comments that should be attached to declarations.
+
+```
+# BAD: DocComment before FuncDecl — doc is consumed as standalone item
+Item -> NL / DocComment / FuncDecl / Other
+
+# GOOD: DocComment after declarations — FuncDecl's doc:DocComment? gets it
+Item -> NL / FuncDecl / DocComment / Other
+```
+
+### NL Between Doc and Keyword
+
+Source code has newlines between doc comments and declarations. Without
+`NL?` or `NL*`, the optional doc capture fails silently:
+
+```
+# BAD: DocComment immediately followed by keyword — NL breaks the match
+FuncDecl -> doc:DocComment? KW_fn id:Ident ...
+
+# GOOD: NL? allows the typical newline between doc and keyword
+FuncDecl -> doc:DocComment? NL? KW_fn id:Ident ...
+```
+
+### Bottom-Up Event Order (bind/scope)
+
+Events fire bottom-up: child rules before parent rules. If ExportDecl
+wraps FunctionDecl, FunctionDecl fires first. Use `bind`/`$scope` to
+pass data from child to parent:
+
+```
+on FunctionDecl {
+  bind ns "value" name "child_decl_id" to $id
+  edge declares from $file to sym_id attrs obj(...)
+}
+on ExportDecl when $doc {
+  let id = $scope("value", "child_decl_id")
+  edge declares from $file to sym_id attrs obj("doc", $doc, ...)
+}
+```
+
+### Token Priority Conflicts
+
+Tokens defined earlier take priority. A generic `Operator /[=+\-*]+/`
+before `EQ /=/` will consume `=` as Operator. Define specific tokens first:
+
+```
+# BAD: Operator matches = before EQ can
+TOKEN Operator /[!$%&*+\-.\/:<=>?@^|~]+/
+TOKEN EQ       /=/
+
+# GOOD: EQ defined first, takes priority
+TOKEN EQ       /=/
+TOKEN Operator /[!$%&*+\-.\/:<=>?@^|~]+/
+```
+
+### Verifying Doc Extraction
+
+After modifying a KGF, always verify doc appears in declares edges:
+
+```bash
+# Must show doc="..." in the declares edge
+indexion kgf edges test_file.ts --spec=typescript | grep declares
+
+# If doc is missing, check events to see where the DocComment went
+indexion kgf events test_file.ts --spec=typescript | grep DocComment
+```
