@@ -178,21 +178,24 @@ Place in `scripts/sdd-validate.sh` at the project root. Requires:
 
 ```bash
 # Validate only
-SDD_THRESHOLD=0.3 SDD_IMPL_DIR=src/lib INDEXION_DIR=~/path/to/indexion ./scripts/sdd-validate.sh <feature>
+INDEXION_DIR=~/path/to/indexion ./scripts/sdd-validate.sh <feature>
 
 # Validate + auto-fix
-SDD_THRESHOLD=0.3 SDD_IMPL_DIR=src/lib INDEXION_DIR=~/path/to/indexion ./scripts/sdd-validate.sh <feature> --fix
+INDEXION_DIR=~/path/to/indexion ./scripts/sdd-validate.sh <feature> --fix
 ```
 
 Reports are saved to `.indexion/sdd-reports/<feature>/`.
 
-### Environment Variables
+### Configuration
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `INDEXION_DIR` | (none) | Path to indexion repo (or `indexion` in PATH) |
-| `SDD_THRESHOLD` | (required) | Similarity threshold for spec align — no universal default; choose based on spec granularity and language |
-| `SDD_IMPL_DIR` | auto-detect | Implementation directory (auto-detects from design.md, errors if unresolvable) |
+- **Threshold**: Not set by the script. indexion's own `--threshold`
+  default (0.6) is used. Override by passing `--threshold` to indexion
+  directly if needed.
+- **Impl directory**: Auto-detected from `design.md`. The script errors
+  if it cannot find the path. Ensure design.md references the impl
+  directory (e.g. `` `src/lib` — core library ``).
+- **INDEXION_DIR**: Only env var used. Points to the indexion repo
+  when not installed globally. Falls back to `indexion` in PATH.
 
 ## sdd-pipeline.sh — Full Autonomous Pipeline
 
@@ -201,13 +204,13 @@ via codex, with indexion gates between each step.
 
 ```bash
 # Full pipeline from scratch
-SDD_THRESHOLD=0.3 SDD_IMPL_DIR=src/lib INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature>
+INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature>
 
 # Resume from a specific phase
-SDD_THRESHOLD=0.3 SDD_IMPL_DIR=src/lib INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature> impl
+INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature> impl
 
 # Validate only (re-run after auto-fix)
-SDD_THRESHOLD=0.3 SDD_IMPL_DIR=src/lib INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature> validate
+INDEXION_DIR=~/path/to/indexion ./scripts/sdd-pipeline.sh <feature> validate
 ```
 
 ### Auto-Fix with Spec Alignment Context
