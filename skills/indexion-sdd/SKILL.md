@@ -188,14 +188,20 @@ Reports are saved to `.indexion/sdd-reports/<feature>/`.
 
 ### Configuration
 
-- **Threshold**: Not set by the script. indexion's own `--threshold`
-  default (0.6) is used. Override by passing `--threshold` to indexion
-  directly if needed.
+- **Threshold (0.3)**: Empirical lower bound from 5 projects / 3 languages
+  / 7 RFCs. Every correctly-implemented requirement produced a BM25 score
+  >= 0.303 when its doc comment contained the spec's key vocabulary.
+  indexion's generic default (0.6) is too high for SDD use because SDD
+  criteria are short text matched against code + doc, not full-document
+  similarity. Defined as a named constant `THRESHOLD=0.3` in the script
+  with documented rationale.
 - **Impl directory**: Auto-detected from `design.md`. The script errors
   if it cannot find the path. Ensure design.md references the impl
   directory (e.g. `` `src/lib` — core library ``).
-- **INDEXION_DIR**: Only env var used. Points to the indexion repo
-  when not installed globally. Falls back to `indexion` in PATH.
+- **INDEXION_DIR**: Only env var. Points to the indexion repo when not
+  installed globally. Falls back to `indexion` in PATH.
+- **No other env vars**. All values come from project artifacts (design.md)
+  or justified constants (threshold).
 
 ## sdd-pipeline.sh — Full Autonomous Pipeline
 
