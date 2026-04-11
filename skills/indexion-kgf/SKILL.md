@@ -18,6 +18,26 @@ Inspect and debug KGF language specs by viewing tokens, parse events, and extrac
 
 ## Subcommands
 
+### `indexion kgf list` — List Installed Specs
+
+```bash
+indexion kgf list
+```
+
+### `indexion kgf update` — Update All Specs
+
+Download the latest specs from GitHub.
+
+```bash
+indexion kgf update
+```
+
+### `indexion kgf add` — Install a Single Spec
+
+```bash
+indexion kgf add <spec-name>
+```
+
 ### `indexion kgf inspect` — Full Inspection
 
 Show tokens, events, and edges all at once.

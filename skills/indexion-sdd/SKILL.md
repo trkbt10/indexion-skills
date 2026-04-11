@@ -130,6 +130,7 @@ indexion spec verify --spec='requirements.md' src/lib/ --format md
 | `--format` | json | Output format: json, md, github-issue |
 | `--focus` | all | Token kind filter: ident, text, vocab, all |
 | `--max-candidates` | 200 | Maximum items in output |
+| `-o, --output` | stdout | Output file path |
 
 ### spec align diff — Requirement-Level Drift
 
@@ -160,6 +161,15 @@ indexion spec align status requirements.md src/lib/ --fail-on any --threshold 0.
 | `drifted` | Fail if any DRIFTED |
 | `spec-only` | Fail if any SPEC_ONLY |
 | `any` | Fail on DRIFTED or SPEC_ONLY |
+
+### spec align watch — Watch Mode
+
+```bash
+indexion spec align watch --mode=diff requirements.md src/lib/
+indexion spec align watch --mode=status requirements.md src/lib/
+```
+
+Reruns alignment when spec or implementation inputs change.
 
 ### spec align suggest — Reconciliation Suggestions
 

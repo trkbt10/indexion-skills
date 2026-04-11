@@ -49,11 +49,26 @@ indexion explore --strategy=tsed --format=list <path>
 indexion explore --strategy=hybrid --format=list <path>
 ```
 
+## Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--format=FORMAT` | matrix | Output: matrix, list, cluster, json |
+| `--strategy=NAME` | tfidf | Algorithm: tfidf, bm25, jsd, ncd, hybrid, apted, tsed |
+| `--threshold=FLOAT` | 0.5 | Min similarity for list/json/cluster output |
+| `--ext=EXT` | all | File extension filter (repeatable) |
+| `--include=PATTERN` | -- | Include files matching glob pattern (repeatable) |
+| `--exclude=PATTERN` | -- | Exclude files matching glob pattern (repeatable) |
+| `--fdr=FLOAT` | 0 | FDR correction level (0=disabled, 0.05=5% false discovery rate) |
+| `--specs-dir=DIR` | kgfs | KGF specs directory |
+
 ## Strategies
 
 | Strategy | Description | Speed |
 |----------|-------------|-------|
 | `tfidf` (default) | TF-IDF token similarity | Fast |
+| `bm25` | BM25 token similarity | Fast |
+| `jsd` | Jensen-Shannon Divergence | Fast |
 | `hybrid` | Dynamic TF-IDF + APTED, auto-selects based on dataset size | Adaptive |
 | `ncd` | Normalized Compression Distance | Fast |
 | `apted` | All-Path Tree Edit Distance (function-level) | Slow |

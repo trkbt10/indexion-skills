@@ -50,7 +50,8 @@ indexion plan refactor src/ cmd/indexion/
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--threshold=FLOAT` | 0.7 | Minimum similarity threshold |
-| `--strategy=NAME` | hybrid | Similarity strategy: hybrid, tfidf, ncd |
+| `--strategy=NAME` | hybrid | Similarity strategy: hybrid, tfidf, bm25, jsd, ncd |
+| `--fdr=FLOAT` | 0 | FDR correction level (0=disabled, 0.05=5% false discovery rate) |
 | `--style=STYLE` | raw | Output style: raw, structured |
 | `--format=FORMAT` | md | Output format: md, json, text, github-issue |
 | `--name=NAME` | — | Project name (for structured style) |

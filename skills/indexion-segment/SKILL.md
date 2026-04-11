@@ -18,31 +18,31 @@ Split text into contextual segments using divergence-based, TF-IDF, or punctuati
 
 ```bash
 # Default window divergence strategy
-indexion segment <file>
+indexion segment <input-file> <output-dir>
 
 # TF-IDF based segmentation
-indexion segment --strategy=tfidf <file>
+indexion segment --strategy=tfidf <input-file> <output-dir>
 
 # Punctuation-based segmentation
-indexion segment --strategy=punctuation <file>
+indexion segment --strategy=punctuation <input-file> <output-dir>
 
 # Custom segment sizes
-indexion segment --min-size=200 --max-size=3000 --target-size=800 <file>
+indexion segment --min-size=200 --max-size=3000 --target-size=800 document.txt output/
 
 # Custom divergence threshold
-indexion segment --threshold=0.5 <file>
+indexion segment --threshold=0.5 document.txt output/
 
 # Adaptive threshold mode (default)
-indexion segment --adaptive <file>
+indexion segment --adaptive document.txt output/
 
 # Hybrid NCD+TF-IDF mode
-indexion segment --hybrid --ncd-weight=0.6 --tfidf-weight=0.4 <file>
+indexion segment --hybrid --ncd-weight=0.6 --tfidf-weight=0.4 document.txt output/
 
 # Custom window size
-indexion segment --window-size=5 <file>
+indexion segment --window-size=5 document.txt output/
 
 # Custom output prefix
-indexion segment --prefix=chunk <file>
+indexion segment --prefix=chunk document.txt output/
 ```
 
 ## Options
@@ -71,6 +71,6 @@ indexion segment --prefix=chunk <file>
 
 ## Workflow
 
-1. Run `indexion segment <file>` to split text with defaults
+1. Run `indexion segment <input-file> <output-dir>` to split text with defaults
 2. Adjust `--threshold` and `--target-size` to tune segmentation granularity
 3. Use `--hybrid` mode for better accuracy on mixed-content documents

@@ -32,7 +32,7 @@ curl -fsSL https://raw.githubusercontent.com/trkbt10/indexion/main/install.sh | 
 
 | Skill | Command | Description |
 |-------|---------|-------------|
-| `indexion-doc` | `indexion doc` | Generate dependency graphs and READMEs |
+| `indexion-documentation` | `indexion doc *`, `indexion plan documentation/readme/reconcile` | Documentation lifecycle — generate, analyze, plan, verify |
 
 ### Spec-Driven Development
 
@@ -45,10 +45,7 @@ curl -fsSL https://raw.githubusercontent.com/trkbt10/indexion/main/install.sh | 
 | Skill | Command | Description |
 |-------|---------|-------------|
 | `indexion-plan-refactor` | `indexion plan refactor` | Generate refactoring plans from similarity analysis |
-| `indexion-plan-docs` | `indexion plan documentation` | Analyze documentation coverage |
-| `indexion-plan-reconcile` | `indexion plan reconcile` | Detect implementation/documentation drift |
 | `indexion-plan-solid` | `indexion plan solid` | Plan common code extraction across directories |
-| `indexion-plan-readme` | `indexion plan readme` | Generate README writing tasks |
 
 ## Plugin Structure
 
@@ -61,13 +58,10 @@ indexion-skills/
 │   ├── indexion-explore/     # File similarity analysis
 │   ├── indexion-segment/     # Text segmentation
 │   ├── indexion-kgf/         # KGF spec inspection
-│   ├── indexion-doc/         # Dependency graphs & READMEs
+│   ├── indexion-documentation/ # Documentation lifecycle (doc + plan docs/readme/reconcile)
 │   ├── indexion-sdd/         # Spec-Driven Development loop
 │   ├── indexion-plan-refactor/
-│   ├── indexion-plan-docs/
-│   ├── indexion-plan-reconcile/
 │   ├── indexion-plan-solid/
-│   └── indexion-plan-readme/
 └── LICENSE
 ```
 
