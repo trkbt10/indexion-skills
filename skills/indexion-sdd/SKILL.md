@@ -1,6 +1,6 @@
 ---
 name: indexion-sdd
-description: Spec-Driven Development with indexion quantitative analysis. Use when the user wants to run SDD workflows, verify spec-to-implementation conformance, generate SDD drafts from documents, or integrate indexion with cc-sdd/codex for automated validation loops.
+description: RFCや仕様書からSDD要件を生成し、実装との適合性を定量検証する。spec draft→spec align→spec verify→codex/claude連携の自動バリデーションループ。仕様↔実装のドリフトゲートをCI的に運用する。
 ---
 
 # indexion SDD (Spec-Driven Development)
@@ -139,10 +139,40 @@ codex exec --full-auto --json -C . "\$kiro-spec-tasks $FEATURE -y" > $REPORT_DIR
 git add $SPEC_DIR && git commit -m "spec: tasks for $FEATURE"
 
 # --- Impl (long-running, background + monitor) ---
-# Include per-task drift gate in the prompt (see Step 2.5).
-# When using $kiro-impl directly, append drift gate instructions to the prompt
-# or use a wrapper prompt file that includes them.
-codex exec --full-auto --json -C . "\$kiro-impl $FEATURE" > $REPORT_DIR/impl.jsonl &
+# Write a prompt file instead of using $kiro-impl directly.
+# This allows including drift gate and commit instructions.
+cat > $REPORT_DIR/impl-prompt.md << 'IMPLEOF'
+## Context
+
+You are implementing the <FEATURE> feature.
+Read `.kiro/specs/<FEATURE>/tasks.md` for task details and
+`.kiro/specs/<FEATURE>/design.md` for the design.
+
+## Per-Task Drift Gate
+
+After completing each task and committing, run:
+
+```bash
+indexion spec align diff .kiro/specs/<FEATURE>/requirements.md src/<pkg>/ --format markdown --threshold 0.3
+indexion spec align status .kiro/specs/<FEATURE>/requirements.md src/<pkg>/ --threshold 0.3 --fail-on any
+```
+
+If DRIFTED or SPEC_ONLY items remain for the requirement your task
+addresses, fix them (add spec vocabulary to pub declaration doc comments)
+and re-commit before moving to the next task.
+
+When all tasks are done, `spec align status --fail-on any` must exit 0.
+
+## Important
+
+Commit your work after completing tasks. Do not leave changes uncommitted.
+IMPLEOF
+
+# Replace <FEATURE> and <pkg> placeholders
+sed -i '' "s/<FEATURE>/$FEATURE/g; s/<pkg>/$PKG/g" $REPORT_DIR/impl-prompt.md
+
+codex exec --full-auto --json -C . \
+  "$(cat $REPORT_DIR/impl-prompt.md)" > $REPORT_DIR/impl.jsonl &
 CODEX_PID=$!
 ```
 
@@ -325,20 +355,23 @@ indexion spec verify --spec='.kiro/specs/<feature>/requirements.md' src/ \
 # 2. Write a prompt file (avoid HEREDOC — use file to prevent stdin blocking)
 cat > .indexion/sdd-reports/vocab-fix-prompt.md << 'EOF'
 The spec alignment tool reports that several requirements are DRIFTED or
-SPEC_ONLY. This means the implementation is functionally correct but the
-specification vocabulary is not sufficiently reflected in public doc comments.
+SPEC_ONLY. For each item, determine whether it is:
+
+1. **Implementation gap** — the spec requirement is not implemented at all.
+   Add the missing implementation (types, functions, validation) and tests.
+2. **Vocabulary gap** — the implementation exists but spec vocabulary is
+   missing from public doc comments. Add spec terms to pub declarations.
 
 Your task:
-- Read the alignment report and vocabulary gap report below.
-- Identify which public declarations (pub fn, pub struct, pub enum, pub type)
-  correspond to each DRIFTED or SPEC_ONLY requirement.
-- Add or update doc comments on those public declarations so that the
-  requirement vocabulary appears in the implementation's public surface.
-- Do NOT change any logic or tests. Only modify doc comments.
+- Read the alignment report below.
+- For each DRIFTED or SPEC_ONLY requirement, search the codebase for
+  related keywords from that requirement. If related code exists, it is
+  a vocabulary gap — add doc comments. If no related code exists, it is
+  an implementation gap — implement it.
 - The alignment tool only extracts vocabulary from public declarations.
   Doc comments on private functions are invisible to the tool.
-- Run the project's formatter and test suite after editing to verify
-  nothing breaks.
+- Run the project's formatter and test suite after editing.
+- Commit your changes. Do not leave changes uncommitted.
 
 ## Spec Align Diff Report
 EOF

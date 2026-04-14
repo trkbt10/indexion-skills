@@ -1,323 +1,254 @@
 ---
 name: indexion-documentation
-description: Documentation lifecycle — generate graphs/READMEs, analyze coverage, plan writing tasks, and detect doc drift. Use when the user asks about documentation generation, coverage, staleness, or README planning.
+description: ドキュメントのライフサイクル管理。READMEの自動生成、ドキュメントカバレッジ分析、書くべきドキュメントの計画立案、コード↔ドキュメント間のドリフト検出（plan reconcile）。
 ---
 
-# indexion documentation
+# indexion documentation — Documentation Lifecycle
 
-End-to-end documentation lifecycle: generate, analyze, plan, and verify.
+Manage documentation from generation through verification. This skill covers
+every phase of the documentation lifecycle: assessing what exists, generating
+what's missing, detecting when docs drift from code, and planning what to write.
 
-## When to Use
+## Start Here: What Do You Need?
 
-- User asks for a dependency graph or diagram
-- User wants to generate README from doc comments
-- User asks "what needs documentation?"
-- User wants to check documentation coverage
-- User asks "are the docs up to date?"
-- User wants to create README files for each package
-- User asks to plan documentation writing tasks
-- Before a release, to ensure docs are complete and up to date
+### "What needs documentation?"
 
-## Commands Overview
-
-| Command | Purpose |
-|---------|---------|
-| `indexion doc init` | Initialize documentation templates |
-| `indexion doc graph` | Generate dependency diagrams |
-| `indexion doc readme` | Generate READMEs from source |
-| `indexion plan documentation` | Analyze documentation coverage |
-| `indexion plan readme` | Generate README writing plans |
-| `indexion plan reconcile` | Detect implementation/documentation drift |
-
-Supporting command:
-
-| Command | Purpose |
-|---------|---------|
-| `indexion grep --undocumented` | Quick per-file listing of undocumented pub declarations |
-
----
-
-## `indexion doc init` — Initialize Templates
-
-Set up documentation template structure.
+Assess the current state before writing anything.
 
 ```bash
-indexion doc init <directory>
-indexion doc init --force <directory>
+# Quick coverage overview — how much of the public API is documented?
+indexion plan documentation --style=coverage .
 ```
 
-**Options:**
+This scans all packages and reports:
+- Overall coverage percentage (documented / total pub items)
+- Per-package breakdown with README presence
+- Functions vs types coverage split
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `-f, --force` | false | Overwrite existing files |
-| `--specs-dir=DIR` | kgfs | KGF specs directory |
-
-Creates `.indexion/state/templates/readme.md` with `{{include:...}}` placeholder directives.
-
----
-
-## `indexion doc graph` — Dependency Graph
-
-Generate dependency diagrams in various formats.
-
-```bash
-# Mermaid (default)
-indexion doc graph <path>
-
-# Other formats
-indexion doc graph --format=dot <path>
-indexion doc graph --format=d2 <path>
-indexion doc graph --format=text <path>
-indexion doc graph --format=json <path>
-
-# Custom title and output
-indexion doc graph --title="My Dependencies" --output=deps.mmd <path>
+Output example:
+```
+Overall Coverage: 81% (2285/2806)
+Functions: 89%, Types: 75%
 ```
 
-**Options:**
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--format=FORMAT` | mermaid | Output format: mermaid, json, dot, d2, text |
-| `--title=TEXT` | Module Dependencies | Diagram title |
-| `--output=FILE` | stdout | Output file path |
-| `--specs-dir=DIR` | kgfs | KGF specs directory |
-
----
-
-## `indexion doc readme` — README Generation
-
-Extract doc comments from source files and generate README documentation.
+For a detailed plan with prioritized action items:
 
 ```bash
-# Basic
-indexion doc readme <path>
+# Full plan with priorities and package inventory
+indexion plan documentation .
+
+# As a GitHub Issue for tracking
+indexion plan documentation --format=github-issue .
+
+# JSON for scripting
+indexion plan documentation --format=json .
+```
+
+For a quick per-file listing of undocumented items:
+
+```bash
+# Which pub declarations lack doc comments?
+indexion grep --undocumented src/
+```
+
+**How detection works:** Uses KGF tokenization to find visibility keywords
+(`pub`, `public`, `export`) paired with declaration keywords (`fn`, `struct`,
+`enum`, `type`, `trait`). Associates `///` doc comments with declarations.
+Language-agnostic — works for any KGF-supported language.
+
+**Caveat:** `///|` marker-only comments count as "documented" even without
+descriptive text. Check `doc_preview` in the output for quality, not just coverage.
+
+### "Generate READMEs for my packages"
+
+Auto-generate README files from doc comments in source code.
+
+```bash
+# Generate README.md for each package that doesn't already have one
+indexion doc readme --per-package src/ cmd/indexion/
+```
+
+On a mature codebase, most packages already have READMEs, so this command
+skips them all. It only creates new files — never overwrites.
+
+For root-level README composed from package READMEs:
+
+```bash
+# Build root README from doc.json sections
+indexion doc readme --config=doc.json .
+```
+
+For a single package output to stdout:
+
+```bash
+# Generate README content for a specific path
+indexion doc readme src/kgf/lexer/
 
 # With template
-indexion doc readme --template=.indexion/state/templates/readme.md <path>
-
-# With doc.json configuration (root-level README)
-indexion doc readme --config=doc.json <path>
-
-# Per-package (skips packages with existing README.md)
-indexion doc readme --per-package <path>
-
-# Filter files
-indexion doc readme --include='*.mbt' --exclude='*_test.mbt' <path>
+indexion doc readme --template=.indexion/state/templates/readme.md src/
 
 # Output to file
-indexion doc readme -o=README.md <path>
+indexion doc readme -o=README.md src/kgf/lexer/
 ```
 
-**Options:**
+**Auto-generated READMEs are API-listing skeletons.** They need manual enrichment
+with Usage, Options, and Examples sections. For CLI command READMEs, the
+authoritative source is `indexion <command> --help`.
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--format=FORMAT` | md | Output format: markdown, json, raw |
-| `--template=FILE` | -- | Template file for generation |
-| `--config=FILE` | -- | doc.json configuration file |
-| `--per-package` | false | Generate README.md per package (skips existing) |
-| `--[no-]recursive` | true | Recurse into subdirectories |
-| `--include=PATTERN` | -- | Include pattern (repeatable) |
-| `--exclude=PATTERN` | -- | Exclude pattern (repeatable) |
-| `--specs-dir=DIR` | kgfs | KGF specs directory |
-| `-o, --output=FILE` | stdout | Output file path |
+### "Are my docs up to date?"
 
----
-
-## `indexion plan documentation` — Coverage Analysis
-
-Analyze documentation coverage with per-package breakdown and prioritized action items.
+Detect drift between implementation code and documentation.
 
 ```bash
-# Full plan (default)
-indexion plan documentation <path>
-
-# Quick coverage overview (~8s on large codebases)
-indexion plan documentation --style=coverage <path>
-
-# GitHub Issue format
-indexion plan documentation --format=github-issue <path>
-
-# JSON output
-indexion plan documentation --format=json <path>
-
-# With Issue Form template
-indexion plan documentation --template=.github/ISSUE_TEMPLATE/doc.yml <path>
-
-# With project name
-indexion plan documentation --name=myproject <path>
-
-# Output to file
-indexion plan documentation -o=doc-plan.md <path>
+# Full reconcile report in markdown
+indexion plan reconcile --format=md .
 ```
 
-**Options:**
+This compares code symbols against documentation and reports:
+- **Vocabulary divergence**: source code terms missing from co-located docs
+- **Stale docs**: code changed after docs were last updated
+- **Missing docs**: code modules with no documentation coverage
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--style=STYLE` | full | Output style: coverage, full |
-| `--format=FORMAT` | md | Output format: md, json, github-issue |
-| `--template=FILE` | -- | GitHub Issue Form template (.yml) |
-| `--name=NAME` | auto | Project name (auto-detect from moon.mod.json) |
-| `-o, --output=FILE` | stdout | Output file path |
-| `--specs-dir=DIR` | kgfs | KGF specs directory |
+**Read the report:**
 
-### How It Works
+The Vocabulary Divergence table shows distance (0-100%) between code vocabulary
+and documentation. 90%+ distance means the README is essentially unrelated to
+the current code. Check the Gap Terms column for specific missing vocabulary.
 
-Public item detection uses **KGF tokenization** (language-agnostic):
-- Detects visibility keywords (`pub`, `public`, `export`) + declaration keywords (`fn`, `struct`, `enum`, `type`, `trait`, etc.)
-- Handles visibility modifiers: `pub(all)`, `pub(readonly)`, `pub(open)`
-- Associates `///` doc comments with the declarations they precede
-- Applies KGF ignore patterns (e.g. `*_test.mbt`, `*_wbtest.mbt`) to skip test files
-- Single-pass tokenization for performance
-
-### When to Use Which
-
-| Task | Command |
-|------|---------|
-| Quick check: what's undocumented? | `indexion grep --undocumented src/` |
-| Coverage report for release | `indexion plan documentation --style=coverage .` |
-| Full plan with priorities | `indexion plan documentation .` |
-| Track in GitHub Issues | `indexion plan documentation --format=github-issue .` |
-
----
-
-## `indexion plan readme` — README Writing Plans
-
-Analyze templates and generate per-section writing tasks.
+**Scoped checks:**
 
 ```bash
+# Check only package-level docs
+indexion plan reconcile --scope=package-docs .
+
+# Check only tree-level docs
+indexion plan reconcile --scope=tree-docs .
+
+# Check specific documents
+indexion plan reconcile --doc='docs/**/*.md' .
+indexion plan reconcile --doc-spec=markdown .
+```
+
+**Timestamp strategies:**
+
+```bash
+# Use git commit timestamps (more accurate for collaborative projects)
+indexion plan reconcile --git .
+
+# Use file mtimes only (faster, no git dependency)
+indexion plan reconcile --mtime-only .
+```
+
+**Cache and drift:**
+
+`plan reconcile` maintains a cache at `.indexion/cache/reconcile/`. After schema
+changes or indexion upgrades, the cache can become stale and cause deserialization
+errors. Clear it:
+
+```bash
+rm -rf .indexion/cache/reconcile
+```
+
+### "Show me the dependency structure"
+
+Generate dependency diagrams for understanding module relationships.
+
+```bash
+# Mermaid diagram (default — embeddable in GitHub README)
+indexion doc graph src/config/
+
+# Other formats
+indexion doc graph --format=dot src/     # Graphviz DOT
+indexion doc graph --format=d2 src/      # D2
+indexion doc graph --format=text src/    # ASCII text
+indexion doc graph --format=json src/    # Machine-readable
+
+# Custom title and output file
+indexion doc graph --title="KGF Dependencies" --output=deps.mmd src/kgf/
+```
+
+### "Plan what documentation to write"
+
+Generate structured writing tasks from templates.
+
+```bash
+# Initialize documentation template structure
+indexion doc init .
+
 # Generate writing plan from template
-indexion plan readme --template=.indexion/state/templates/readme.md <path>
+indexion plan readme --template=.indexion/state/templates/readme.md src/
 
 # Output plans to directory
-indexion plan readme --template=readme.md --plans-dir=.indexion/plans <path>
+indexion plan readme --template=readme.md --plans-dir=.indexion/plans src/
 
-# JSON output
-indexion plan readme --template=readme.md --format=json <path>
-
-# Output to file
-indexion plan readme --template=readme.md -o=readme-plan.md <path>
+# JSON for task tracking
+indexion plan readme --template=readme.md --format=json src/
 ```
 
-**Options:**
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--template=FILE` | (required) | Template file with `{{include:...}}` placeholders |
-| `--plans-dir=DIR` | .indexion/plans | Output directory for plans |
-| `--format=FORMAT` | md | Output format: markdown, json |
-| `-o, --output=FILE` | stdout | Output file path |
-| `--specs-dir=DIR` | kgfs | KGF specs directory |
-
----
-
-## `indexion plan reconcile` — Documentation Drift Detection
-
-Detect implementation/documentation drift by comparing timestamps and content relationships. Uses inverted-index-accelerated matching and optional fork-based parallelism.
+## Full Workflow
 
 ```bash
-# Basic check (JSON output)
-indexion plan reconcile <path>
+# 1. Assess — what's the current state?
+indexion plan documentation --style=coverage .
 
-# Markdown report
-indexion plan reconcile --format=md <path>
+# 2. Generate — create READMEs for packages that lack them
+indexion doc readme --per-package src/ cmd/indexion/
 
-# Scoped checks
-indexion plan reconcile --scope=package-docs <path>
-indexion plan reconcile --scope=tree-docs <path>
+# 3. Visualize — understand the dependency structure
+indexion doc graph --output=deps.mmd src/
 
-# Restrict to specific document paths
-indexion plan reconcile --doc='docs/**/*.md' <path>
+# 4. Enrich — for each CLI command README:
+#    a) Run `indexion <command> --help` for the authoritative API
+#    b) Write Usage/Options/Examples sections from the help output
+#    c) Never copy CLI details from other docs — they drift
 
-# Restrict to specific document types (KGF spec names)
-indexion plan reconcile --doc-spec=markdown <path>
+# 5. Verify — detect drift between code and docs
+indexion plan reconcile --format=md .
 
-# Custom drift threshold
-indexion plan reconcile --threshold-seconds=3600 <path>
-
-# Use git timestamps
-indexion plan reconcile --git <path>
-
-# Skip git, use file mtimes only
-indexion plan reconcile --mtime-only <path>
-
-# Vocabulary divergence threshold
-indexion plan reconcile --vocab-threshold=0.5 <path>
-
-# Limit output
-indexion plan reconcile --max-candidates=50 <path>
-
-# Explicit config
-indexion plan reconcile --config=.indexion.toml <path>
-
-# GitHub Issue format
-indexion plan reconcile --format=github-issue <path>
+# 6. Fix — update docs flagged as divergent, then re-verify
+indexion plan reconcile --format=md .
+#    → Iterate until vocabulary divergence drops to acceptable levels
 ```
 
-**Options:**
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--format=FORMAT` | json | Output format: json, md, github-issue |
-| `--scope=MODE` | -- | Scope mode: custom, package-docs, tree-docs |
-| `--specs-dir=DIR` | auto | KGF specs directory |
-| `--index-dir=DIR` | .indexion/cache/reconcile | Cache directory |
-| `--config=FILE` | -- | Config file (.indexion.toml or .json) |
-| `--review-results=FILE` | -- | Apply logical review decisions from JSON |
-| `--threshold-seconds=N` | 60 | Drift threshold in seconds |
-| `--max-candidates=N` | 200 | Maximum candidates in output |
-| `--doc=GLOB` | -- | Restrict document paths (repeatable) |
-| `--doc-spec=NAME` | -- | Restrict document KGF specs (repeatable) |
-| `--no-file-fallback` | false | Disable basename/file-path fallback matching |
-| `--git` | false | Prefer git timestamps over file mtimes |
-| `--mtime-only` | false | Skip git timestamps, use file mtimes |
-| `--logical-review=MODE` | queue | Logical review mode: queue, off |
-| `--vocab-threshold=N` | 0.3 | Vocabulary divergence threshold (cosine distance, 0.0-1.0) |
-| `--no-parallel` | false | Disable fork-based parallel processing |
-| `-o, --output=FILE` | stdout | Output file path |
-
----
-
-## End-to-End Workflow
-
-```
-1. Initialize    indexion doc init .
-2. Understand    indexion doc graph .
-3. Assess        indexion plan documentation --style=coverage .
-4. Plan          indexion plan readme --template=... .
-5. Generate      indexion doc readme --per-package src/ cmd/indexion/
-6. Root README   indexion doc readme --config=doc.json .
-7. Verify        indexion plan reconcile --format=md .
-```
-
-### Configuration
+## Configuration
 
 In `.indexion.toml`, the `[doc]` section controls defaults:
 
 ```toml
 [doc]
 config_path = "doc.json"   # doc.json path for root README generation
-per_package = true          # Default to per-package mode (no need for --per-package flag)
+per_package = true          # Default to per-package mode
 ```
 
-- `per_package = true` makes `indexion doc readme <path>` behave as if `--per-package` was passed.
-- Explicit `--config=doc.json` always takes priority for root-level README generation, even when `per_package = true`.
+- `per_package = true` makes `doc readme <path>` behave as if `--per-package` was passed.
+- Explicit `--config=doc.json` always takes priority for root-level README generation.
 
-## Dogfooding Lessons
+`doc.json` entries with nonexistent `path` values are silently ignored.
+Verify package paths exist before adding them.
 
-- `doc readme --per-package` skips existing READMEs — hand-written ones are preserved
-- `doc graph` output can be embedded directly in README via Mermaid code blocks
-- `--style=coverage` completes in ~8s on a 750+ file codebase. If it hangs, check for test files being included.
-- Coverage can be misleading: `///|` marker-only comments count as documented even without descriptive text. Check `doc_preview` for quality.
-- `plan reconcile` defaults to JSON output — use `--format=md` for human-readable reports
-- `plan reconcile` detects **implementation → docs** vocabulary divergence, but does **not** verify the reverse (e.g. READMEs referencing nonexistent CLI options). For that direction, compare each README against `indexion <command> --help` output manually.
-- `plan reconcile` cache can become stale after schema changes. If you hit a deserialization crash, clear the cache: `rm -rf .indexion/cache/reconcile`
-- Auto-generated READMEs from `doc readme --per-package` are API-listing skeletons. They need manual enrichment with Usage/Options/Examples sections to match actual CLI behavior.
-- When verifying README accuracy, always start from the authoritative source: `indexion <command> --help`. READMEs are secondary documentation and drift over time.
-- `doc readme --per-package` only generates for packages **without** an existing README. On a mature codebase, nearly all packages already have READMEs (even skeleton ones), so the command skips them. To refresh existing READMEs, edit them manually rather than relying on regeneration.
-- The recommended workflow for CLI command READMEs: (1) run `<command> --help`, (2) write Usage/Options/Examples sections from the help output, (3) verify with `plan reconcile --scope=package-docs --format=md` to check vocabulary divergence dropped.
-- Root README generation uses `doc.json` to compose sections from package READMEs and static files. Run `indexion doc readme --config=doc.json .` to build it. This is separate from per-package generation.
-- `doc.json` entries with nonexistent `path` values are silently ignored. Verify package paths exist before adding them.
+## Common Pitfalls
+
+**"doc readme --per-package generated nothing"**
+- On a mature codebase, all packages already have READMEs. The command only
+  creates new files, never overwrites. To refresh, edit existing READMEs manually.
+
+**"plan reconcile shows 90%+ divergence everywhere"**
+- Auto-generated skeleton READMEs (API listing only) have high divergence because
+  they lack the vocabulary of the actual implementation. Enrich them with
+  descriptions of what the code does, not just what it exports.
+
+**"plan documentation says 100% coverage but docs are wrong"**
+- Coverage measures presence of doc comments, not accuracy. A `///|` marker
+  counts as documented. Use `plan reconcile` to check content accuracy.
+
+**"plan reconcile crashes on startup"**
+- Cache deserialization error after schema changes. Clear it:
+  `rm -rf .indexion/cache/reconcile`
+
+**"plan reconcile detects drift I already fixed"**
+- The `--git` flag uses commit timestamps. If you fixed docs but haven't committed,
+  mtime-based detection (`--mtime-only`) will see the fix, but git-based won't.
+
+**Reconcile only checks implementation → docs direction.** It detects code terms
+missing from docs, but does NOT detect docs referencing nonexistent CLI options.
+For that direction, compare each README against `indexion <command> --help` manually.

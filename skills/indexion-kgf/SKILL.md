@@ -1,6 +1,6 @@
 ---
 name: indexion-kgf
-description: Inspect and debug KGF (Knowledge Graph Framework) specs — tokenize, parse, and extract edges from source files. Use when the user wants to debug language parsing, inspect how indexion processes a file, or verify KGF spec behavior.
+description: KGFスペックのデバッグ・検査。ソースファイルのトークン化結果、パース木、抽出されるedgesの確認。言語サポートの追加・修正時やindexionの解析結果がおかしいときに使う。
 ---
 
 # indexion kgf

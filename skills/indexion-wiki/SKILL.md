@@ -1,6 +1,6 @@
 ---
 name: indexion-wiki
-description: Build, maintain, and verify a project wiki using indexion. Use when the user wants to create wiki pages, update stale documentation, check wiki health, or navigate the wiki as an agent.
+description: プロジェクトwikiの作成・更新・検証。ページ追加、ソース変更に追従した更新、構造lint、reconcileによるコード↔ドキュメントのドリフト検出、検索インデックス管理まで。エージェントとしてwikiをナビゲート・メンテナンスする手順書。
 ---
 
 # indexion wiki

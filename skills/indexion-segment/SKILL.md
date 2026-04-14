@@ -1,6 +1,6 @@
 ---
 name: indexion-segment
-description: Split text into contextual segments using various strategies. Use when the user needs to chunk text for processing, split documents into sections, or prepare text for RAG/embedding pipelines.
+description: テキストを文脈的なチャンクに分割する。RAG/embeddingパイプライン用のドキュメント分割、セクション抽出。window/tfidf/punctuation/hybrid戦略を目的に応じて選択。
 ---
 
 # indexion segment

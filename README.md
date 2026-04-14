@@ -1,11 +1,10 @@
 # indexion-skills
 
-Claude Code plugin providing skills powered by [indexion](https://github.com/trkbt10/indexion) — source code exploration, similarity analysis, and documentation tools.
+Claude Code skills powered by [indexion](https://github.com/trkbt10/indexion) — code search, similarity analysis, refactoring, documentation, and knowledge management.
 
 ## Installation
 
 ```bash
-# Add marketplace and install
 claude marketplace add trkbt10/indexion-skills
 claude plugin install indexion-skills
 ```
@@ -20,48 +19,53 @@ curl -fsSL https://raw.githubusercontent.com/trkbt10/indexion/main/install.sh | 
 
 ## Available Skills
 
-### Exploration & Analysis
+### Search & Exploration
 
-| Skill | Command | Description |
-|-------|---------|-------------|
-| `indexion-explore` | `indexion explore` | Find similar files and detect duplicates |
-| `indexion-segment` | `indexion segment` | Split text into contextual segments |
-| `indexion-kgf` | `indexion kgf` | Inspect and debug KGF language specs |
+| Skill | When to use | Commands |
+|-------|-------------|----------|
+| `indexion-search` | Find code by name, description, structure, or similarity. Manage cached search indexes. | `grep`, `search`, `explore`, `digest`, `sim` |
+| `indexion-segment` | Split text into contextual chunks for RAG/embedding pipelines. | `segment` |
+| `indexion-kgf` | Debug KGF specs — inspect tokenization, parsing, and edge extraction. | `kgf` |
 
 ### Documentation
 
-| Skill | Command | Description |
-|-------|---------|-------------|
-| `indexion-documentation` | `indexion doc *`, `indexion plan documentation/readme/reconcile` | Documentation lifecycle — generate, analyze, plan, verify |
+| Skill | When to use | Commands |
+|-------|-------------|----------|
+| `indexion-documentation` | Assess coverage, generate READMEs, detect code-to-doc drift. | `doc init/graph/readme`, `plan documentation/readme/reconcile` |
 
-### Spec-Driven Development
+### Refactoring
 
-| Skill | Command | Description |
-|-------|---------|-------------|
-| `indexion-sdd` | `indexion spec *` | SDD validation loop: draft, verify, align, validate with cc-sdd/codex |
+| Skill | When to use | Commands |
+|-------|-------------|----------|
+| `indexion-refactor` | Detect duplication (textual, structural, conceptual) and enforce SoT. | `plan refactor/solid/unwrap`, `explore` |
 
-### Planning
+### Specification
 
-| Skill | Command | Description |
-|-------|---------|-------------|
-| `indexion-plan-refactor` | `indexion plan refactor` | Generate refactoring plans from similarity analysis |
-| `indexion-plan-solid` | `indexion plan solid` | Plan common code extraction across directories |
+| Skill | When to use | Commands |
+|-------|-------------|----------|
+| `indexion-sdd` | RFC/spec to implementation with quantitative conformance verification. | `spec draft/verify/align` |
+
+### Knowledge Base
+
+| Skill | When to use | Commands |
+|-------|-------------|----------|
+| `indexion-wiki` | Create, update, lint, and reconcile a project wiki. Manage search indexes. | `wiki pages/index/lint/export/import/log` |
 
 ## Plugin Structure
 
 ```
 indexion-skills/
 ├── .claude-plugin/
-│   ├── plugin.json          # Plugin manifest
-│   └── marketplace.json     # Marketplace registry
+│   ├── plugin.json
+│   └── marketplace.json
 ├── skills/
-│   ├── indexion-explore/     # File similarity analysis
-│   ├── indexion-segment/     # Text segmentation
-│   ├── indexion-kgf/         # KGF spec inspection
-│   ├── indexion-documentation/ # Documentation lifecycle (doc + plan docs/readme/reconcile)
-│   ├── indexion-sdd/         # Spec-Driven Development loop
-│   ├── indexion-plan-refactor/
-│   ├── indexion-plan-solid/
+│   ├── indexion-search/         # Code search & exploration
+│   ├── indexion-segment/        # Text segmentation
+│   ├── indexion-kgf/            # KGF spec inspection
+│   ├── indexion-documentation/  # Documentation lifecycle
+│   ├── indexion-refactor/       # Duplication detection & SoT
+│   ├── indexion-sdd/            # Spec-Driven Development
+│   ├── indexion-wiki/           # Project wiki lifecycle
 └── LICENSE
 ```
 
