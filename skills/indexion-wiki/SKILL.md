@@ -6,20 +6,36 @@ description: Build, maintain, and verify a project wiki using indexion. Use when
 # indexion wiki
 
 indexion's wiki system maintains a knowledge base at `.indexion/wiki/` as a collection of
-Markdown files governed by a `wiki.json` manifest. The system is designed for LLM-agent
-collaboration: tools detect what needs to change; agents do the writing.
+Markdown files governed by a `wiki.json` manifest.
 
-## The Three-Layer Model
+## A wiki page is not just a `.md` file
 
+A wiki page consists of **four synchronized artifacts**:
+
+| Artifact | File | Updated by |
+|----------|------|------------|
+| Page content | `<id>.md` | `wiki pages add`, `wiki pages update` |
+| Manifest entry | `wiki.json` | `wiki pages add`, `wiki pages update` |
+| Search index | `vectors.db`, `search-sections.json`, `tfidf-vocabulary.json` | `wiki pages update`, `wiki index build --full` |
+| Audit log | `log.json` | Every wiki-modifying command |
+
+**`wiki pages update` updates all four at once.** Editing the `.md` file directly updates
+only the first. The other three become stale — search returns old results, the manifest
+carries wrong provenance, and the log has no record of the change.
+
+If you edit a `.md` directly (e.g. via `Edit` tool), you **must** immediately follow up:
+
+```bash
+indexion wiki pages update \
+  --id=<page-id> \
+  --content=.indexion/wiki/<page-id>.md \
+  --sources="<comma-separated sources from wiki.json>" \
+  --provenance=synthesized \
+  --actor="agent:claude" \
+  --wiki-dir=.indexion/wiki
 ```
-Source Files (immutable) → Wiki Pages (agent-maintained) → Structural Checks (deterministic)
-```
 
-- **Source files** are the ground truth. The wiki synthesizes knowledge from them.
-- **Wiki pages** are Markdown files + a manifest (`wiki.json`) tracking provenance and authorship.
-- **Structural checks** (`wiki lint`) run without an LLM and tell you when the wiki is inconsistent.
-
-Every wiki page carries two provenance fields:
+Every wiki page also carries two provenance fields in the manifest:
 - `provenance`: `"extracted"` | `"synthesized"` | `"manual"`
 - `last_actor`: `"indexion"` | `"agent:<name>"` | `"user"`
 
@@ -29,12 +45,12 @@ Every wiki page carries two provenance fields:
 indexion wiki
   ├── pages
   │   ├── plan    -- propose page structure (init-like)
-  │   ├── add     -- add a new page
-  │   ├── update  -- update an existing page
-  │   └── ingest  -- detect stale pages
+  │   ├── add     -- create a new page (writes .md + manifest + index + log)
+  │   ├── update  -- update an existing page (writes .md + manifest + index + log)
+  │   └── ingest  -- detect stale pages by hashing sources
   ├── index
-  │   └── build   -- build index.md and optionally vectors.db
-  ├── lint        -- structural integrity checks
+  │   └── build   -- rebuild index.md (and optionally vectors.db)
+  ├── lint        -- structural integrity checks (no LLM needed)
   ├── export      -- export to GitHub/GitLab wiki format
   ├── import      -- import from GitHub/GitLab wiki format
   └── log         -- operation audit trail
@@ -64,7 +80,7 @@ cat > /tmp/my-page.md << 'EOF'
 ...content...
 EOF
 
-# 2. Register it in the manifest and write the .md file
+# 2. Register it — this writes .md, updates wiki.json, updates search index, appends log
 indexion wiki pages add \
   --id=my-page \
   --title="My Page Title" \
@@ -81,7 +97,14 @@ Always specify it — pages without sources are invisible to `wiki pages ingest`
 ## Updating an Existing Page
 
 ```bash
-# Write new content to a temp file, then:
+# 1. Write new content to a temp file
+cat > /tmp/updated.md << 'EOF'
+# Updated Page
+...new content...
+EOF
+
+# 2. Update — this overwrites .md, updates wiki.json metadata,
+#    incrementally updates the search index, and appends to log.json
 indexion wiki pages update \
   --id=existing-page \
   --content=/tmp/updated.md \
@@ -90,6 +113,8 @@ indexion wiki pages update \
   --actor="agent:claude" \
   --wiki-dir=.indexion/wiki
 ```
+
+Expected output: `Updated page 'existing-page' (search index updated)`
 
 ## Detecting What Needs Updating
 
@@ -111,14 +136,12 @@ Workflow:
 3. Update the wiki page with `wiki pages update`.
 4. Re-run `ingest` — it should report 0 pages needing attention.
 
-## Verifying Wiki Health
+## Verifying Structural Integrity
 
 ```bash
 # Run all 6 structural checks
 indexion wiki lint --wiki-dir=.indexion/wiki
 ```
-
-The six checks and what they mean:
 
 | Check | What it finds |
 |-------|--------------|
@@ -129,23 +152,68 @@ The six checks and what they mean:
 | Empty pages | Pages with near-zero content |
 | Manifest-file mismatch | `wiki.json` entries with no `.md` file (or vice versa) |
 
-**After writing new pages, always run `wiki lint` and fix any issues before finishing.**
+After writing new pages, always run `wiki lint` and fix any issues before finishing.
 
-Cross-reference warnings (Missing cross-references) are common when related concepts
-are split across pages. Fix them by adding a `## See Also` section with `wiki://page-id` links.
+Cross-reference warnings are common when related concepts are split across pages.
+Fix them by adding a `## See Also` section with `wiki://page-id` links.
+
+## Verifying Content Accuracy (`plan reconcile`)
+
+`wiki lint` catches **structural** problems. `plan reconcile` catches **semantic** drift —
+whether the code symbols described in a wiki page still exist and whether the code has
+changed since the page was last written.
+
+**Always target the project root (`.`).** The `--doc` flag restricts which documents
+participate, but the target directory determines the code symbol universe. Targeting a
+subdirectory shrinks the symbol set and produces zero-fragment reports.
+
+```bash
+indexion plan reconcile \
+  --doc='.indexion/wiki/*.md' \
+  --doc-spec=markdown \
+  --format=md \
+  .
+```
+
+### Reading the report
+
+**Summary** — key metric is `New logical reviews` (fresh drift since last run).
+
+**Suggested Review Groups** — the actionable core:
+
+| Category | Meaning | Action |
+|----------|---------|--------|
+| `stale_doc` | Code changed after the wiki page was last updated | Update the page via `wiki pages update` |
+| `missing_doc` | Code symbols with no matching wiki coverage | Add coverage or create a new page via `wiki pages add` |
+| `review_both` | Wiki is newer than code | Verify the wiki content is correct; this is the expected state after a maintenance cycle |
+
+Each group lists affected symbols and the `Docs:` wiki pages involved.
+Groups without a `Docs:` line mean no wiki page covers that module.
+
+### Residual candidates that persist after maintenance
+
+Reconcile candidates never reach zero. Three sources of persistent candidates:
+
+1. **Modules without wiki pages** produce `missing_doc`. Create pages if coverage is needed.
+2. **Qualified method names** (`Type::method` in wiki) don't match bare symbol names
+   (`method` in code). Verify by grepping the wiki for the symbol name before adding entries.
+3. **Same-name symbols across modules** (`get`, `tokenize`, `to_json_string`) cause
+   cross-module false positives. Check which module the wiki page actually describes.
+
+Track `New logical reviews` as the convergence metric. When it reaches zero,
+all actionable drift has been addressed.
 
 ## Full Wiki Maintenance Cycle
 
-This is the recommended sequence for an agent maintaining a wiki:
-
 ```bash
-# 1. Detect stale pages
+# 1. Detect stale pages (source files changed)
 indexion wiki pages ingest --wiki-dir=.indexion/wiki
 
 # 2. Read the index to understand the wiki structure
 cat .indexion/wiki/index.md
 
-# 3. Update each stale page (repeat for each task from step 1)
+# 3. For each stale page: read changed sources, write new content to temp file,
+#    then update through the command (NOT by editing .md directly)
 indexion wiki pages update --id=<page-id> --content=/tmp/updated.md \
   --sources="..." --provenance=synthesized --actor="agent:<name>" \
   --wiki-dir=.indexion/wiki
@@ -153,10 +221,19 @@ indexion wiki pages update --id=<page-id> --content=/tmp/updated.md \
 # 4. Verify structural integrity
 indexion wiki lint --wiki-dir=.indexion/wiki
 
-# 5. Regenerate the index to reflect all changes
+# 5. Verify content accuracy — target project root, iterate until NLR=0
+indexion plan reconcile \
+  --doc='.indexion/wiki/*.md' \
+  --doc-spec=markdown \
+  --format=md \
+  .
+# → Fix stale_doc groups first. Re-run. Expect 2-3 rounds.
+# → For each fix, use `wiki pages update`, not direct .md edits.
+
+# 6. Regenerate the navigation index
 indexion wiki index build --wiki-dir=.indexion/wiki
 
-# 6. Confirm everything is current
+# 7. Confirm everything is current
 indexion wiki pages ingest --dry-run --wiki-dir=.indexion/wiki
 ```
 
@@ -207,14 +284,6 @@ Every `pages add`, `pages update`, `lint`, `pages ingest`, and `index build` cal
 correctly, or to understand why a page was last modified.
 
 ## Key Pitfalls
-
-**Missing cross-references accumulate silently.** Any two pages that share source files
-but don't link to each other will be flagged by `wiki lint`. After adding a page about
-a topic that overlaps with existing pages, check for and add missing cross-references.
-
-**Pages without `sources` drift invisibly.** `wiki pages ingest` can only detect change for
-pages that list source files. A page with no `sources` will never appear in the ingest
-task list, even if the underlying code has completely changed.
 
 **Backtick-quoted `wiki://` references are not links.** The lint checker correctly
 ignores ``wiki://`` in code spans. Use bare `wiki://page-id` or Markdown links

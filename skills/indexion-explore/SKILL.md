@@ -19,7 +19,7 @@ Analyze file similarity across a directory to find duplicates and related code.
 ## Usage
 
 ```bash
-# Basic similarity matrix (default: tfidf strategy)
+# Basic similarity matrix (default: hybrid strategy)
 indexion explore <path>
 
 # List format with threshold (most useful for finding duplicates)
@@ -45,7 +45,7 @@ indexion explore --format=list --threshold=0.7 \
 indexion explore --strategy=apted --format=list <path>
 indexion explore --strategy=tsed --format=list <path>
 
-# Hybrid strategy (auto-selects TF-IDF or APTED based on dataset size)
+# Explicit hybrid (default, can be omitted)
 indexion explore --strategy=hybrid --format=list <path>
 ```
 
@@ -54,7 +54,7 @@ indexion explore --strategy=hybrid --format=list <path>
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--format=FORMAT` | matrix | Output: matrix, list, cluster, json |
-| `--strategy=NAME` | tfidf | Algorithm: tfidf, bm25, jsd, ncd, hybrid, apted, tsed |
+| `--strategy=NAME` | hybrid | Algorithm: hybrid, tfidf, bm25, jsd, ncd, apted, tsed |
 | `--threshold=FLOAT` | 0.5 | Min similarity for list/json/cluster output |
 | `--ext=EXT` | all | File extension filter (repeatable) |
 | `--include=PATTERN` | -- | Include files matching glob pattern (repeatable) |
@@ -66,10 +66,10 @@ indexion explore --strategy=hybrid --format=list <path>
 
 | Strategy | Description | Speed |
 |----------|-------------|-------|
-| `tfidf` (default) | TF-IDF token similarity | Fast |
+| `hybrid` (default) | Multi-signal evidence fusion: BM25 + JSD lexical, TSED structural | Adaptive |
+| `tfidf` | TF-IDF token similarity | Fast |
 | `bm25` | BM25 token similarity | Fast |
 | `jsd` | Jensen-Shannon Divergence | Fast |
-| `hybrid` | Dynamic TF-IDF + APTED, auto-selects based on dataset size | Adaptive |
 | `ncd` | Normalized Compression Distance | Fast |
 | `apted` | All-Path Tree Edit Distance (function-level) | Slow |
 | `tsed` | Tree Structure Edit Distance (function-level) | Slow |
