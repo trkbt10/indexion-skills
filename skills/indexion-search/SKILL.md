@@ -1,6 +1,6 @@
 ---
 name: indexion-search
-description: "この関数どこ？" "O(n^2)ありそうな箇所は？" "似てるファイルは？" "こういう処理してる関数は？" — コードベースを探す意図に応じて適切なindexionコマンドを選び、検索する。キャッシュインデックスのドリフト管理も含む。
+description: "Where is this function?" "Any O(n^2) hotspots?" "Which files are similar?" "Find code that does X" — pick the right indexion command for your search intent. Covers token patterns, structural queries, semantic similarity, file-level exploration, and cached index lifecycle.
 ---
 
 # indexion search — Codebase Search & Exploration
@@ -18,38 +18,39 @@ Don't pick a command first. Start with your intent.
 
 You know the name. You need to find it.
 
-**名前の完全一致** — `Ident:X` は完全一致。定義と全呼び出し箇所を探す：
+**Exact name match** — `Ident:X` matches the exact token text. Finds definitions and all call sites:
 
 ```bash
-# 型の定義と全参照を探す
+# Find a type definition and all references
 indexion grep "TypeIdent:DigestManifest" src/
 
-# 関数の定義のみ探す（fn キーワード + 識別子）
+# Find only the function definition (fn keyword + identifier)
 indexion grep "fn Ident:parse_config" cmd/
 
-# 関数の定義も呼び出しも全部探す（fn なしで Ident だけ）
+# Find both definition and call sites (Ident without fn)
 indexion grep "Ident:parse_config" cmd/
 
-# pub struct の定義一覧
+# List all pub struct definitions
 indexion grep "pub struct *" src/
 ```
 
-**名前の部分一致** — `--semantic=name:X` は部分一致。正確な名前を覚えていないときに：
+**Substring match** — `--semantic=name:X` matches as a substring. Use when you don't remember the exact name:
 
 ```bash
-# "build_graph" を含む関数を全て探す（build_graph_from_source も見つかる）
+# Find all functions containing "build_graph" (matches build_graph_from_source too)
 indexion grep --semantic=name:build_graph src/ cmd/
 
-# "sort" を含む関数を全て探す
+# Find all functions containing "sort"
 indexion grep --semantic=name:sort src/
 ```
 
-`Ident:build_graph` は `build_graph` という名前のトークンだけに完全一致する。
-`build_graph_from_source` を見つけたいなら `--semantic=name:build_graph` を使う。
+`Ident:build_graph` only matches a token with exactly that text.
+To find `build_graph_from_source`, use `--semantic=name:build_graph` instead.
 
-**token-level search** — `indexion grep` はテキストの grep ではなく、KGF スペックが
-定義するトークン構造に基づいて検索する。`pub fn *` はキーワード `pub`、キーワード `fn`、
-任意の識別子にマッチし、文字列リテラルやコメント内の `pub fn` にはマッチしない。
+**Token-level search** — `indexion grep` is not text grep. It searches over the
+token structure defined by KGF specs. `pub fn *` matches the keyword `pub`, the
+keyword `fn`, then any identifier — it won't match `pub fn` inside a string literal
+or comment.
 
 **Pattern syntax:**
 
@@ -262,21 +263,22 @@ indexion sim --output=both "text1" "text2"         # both (default)
 Before moving or renaming something, find all references.
 
 ```bash
-# 型の全参照を探す（定義 + 使用箇所）
+# All references to a type (definition + usage sites)
 indexion grep "TypeIdent:DigestManifest" src/ cmd/
 
-# 関数の全参照を探す（定義 + 呼び出し箇所）— Ident:X は完全一致
+# All references to a function (definition + call sites) — Ident:X is exact match
 indexion grep "Ident:parse_config" cmd/
 
-# 名前の一部しかわからない場合は --semantic=name: で部分一致
+# Substring match when you only know part of the name
 indexion grep --semantic=name:build_graph src/ cmd/
 
-# リネーム後に旧名称の参照が残っていないか確認
+# Verify no references to the old name remain after a rename
 indexion grep "Ident:old_function_name" src/ cmd/
 ```
 
-**注意:** `Ident:X` と `TypeIdent:X` は異なるトークン種別。型名は `TypeIdent`、
-変数・関数名は `Ident`。どちらかわからないときは `--semantic=name:X` を使う。
+**Note:** `Ident:X` and `TypeIdent:X` are different token kinds. Type names use
+`TypeIdent`, variable/function names use `Ident`. When unsure, use `--semantic=name:X`
+which matches regardless of token kind.
 
 ## Index Lifecycle
 
@@ -363,12 +365,12 @@ indexion wiki index build --full --wiki-dir=.indexion/wiki
 ## Common Pitfalls
 
 **"grep found nothing but I know it exists"**
-- **トークン種別の不一致:** `Ident:Config` は `TypeIdent:Config` にマッチしない。
-  種別がわからなければ `--semantic=name:Config` を使う（種別を問わず部分一致）。
-- **完全一致 vs 部分一致:** `Ident:build_graph` は `build_graph_from_source` にマッチしない。
-  部分一致したいなら `--semantic=name:build_graph` を使う。
-- **対象ディレクトリの間違い:** `src/` に無いものを `src/` で探していないか確認。
-  `src/ cmd/` のように複数ディレクトリを指定できる。
+- **Token kind mismatch:** `Ident:Config` won't match `TypeIdent:Config`.
+  When unsure of the kind, use `--semantic=name:Config` (matches any kind, substring).
+- **Exact vs substring:** `Ident:build_graph` won't match `build_graph_from_source`.
+  For substring matching, use `--semantic=name:build_graph`.
+- **Wrong target directory:** Check that you're searching the right path.
+  You can specify multiple directories: `src/ cmd/`.
 
 **"explore shows 95% similarity between types.mbt files"**
 - Type definition files share structural patterns (pub struct + getters).

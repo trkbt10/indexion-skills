@@ -1,6 +1,6 @@
 ---
 name: indexion-kgf
-description: KGFスペックのデバッグ・検査。ソースファイルのトークン化結果、パース木、抽出されるedgesの確認。言語サポートの追加・修正時やindexionの解析結果がおかしいときに使う。
+description: Debug and inspect KGF specs — view tokenization results, parse trees, and extracted edges from source files. Use when adding/fixing language support or when indexion's analysis output looks wrong.
 ---
 
 # indexion kgf

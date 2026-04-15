@@ -1,6 +1,6 @@
 ---
 name: indexion-refactor
-description: コードを書いた後、重複や散在した概念を検出して整理する。コピペ重複、パッケージ間の共有コード抽出、不要なラッパー関数の除去、そしてコンセプトレベルのSoT違反まで — 3段階の重複をindexionで検出し、修正し、検証する。
+description: After writing code, detect and clean up duplication at three levels — copy-paste blocks, cross-package shared code, unnecessary wrappers, and concept-level SoT violations. Detect with indexion, fix, and verify.
 ---
 
 # indexion refactor — Codebase Refactoring

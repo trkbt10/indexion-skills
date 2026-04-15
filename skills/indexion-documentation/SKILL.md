@@ -1,6 +1,6 @@
 ---
 name: indexion-documentation
-description: ドキュメントのライフサイクル管理。READMEの自動生成、ドキュメントカバレッジ分析、書くべきドキュメントの計画立案、コード↔ドキュメント間のドリフト検出（plan reconcile）。
+description: Documentation lifecycle — assess coverage, generate READMEs from doc comments, plan writing tasks, and detect code-to-doc drift with plan reconcile. Covers the full cycle from "what needs docs?" to "are docs still accurate?"
 ---
 
 # indexion documentation — Documentation Lifecycle

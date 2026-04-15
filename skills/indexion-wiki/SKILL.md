@@ -1,6 +1,6 @@
 ---
 name: indexion-wiki
-description: プロジェクトwikiの作成・更新・検証。ページ追加、ソース変更に追従した更新、構造lint、reconcileによるコード↔ドキュメントのドリフト検出、検索インデックス管理まで。エージェントとしてwikiをナビゲート・メンテナンスする手順書。
+description: Project wiki lifecycle — create pages, track source changes with ingest, update stale pages, lint structural integrity, detect code-to-doc drift with reconcile, and manage search indexes. A runbook for navigating and maintaining the wiki as an agent.
 ---
 
 # indexion wiki

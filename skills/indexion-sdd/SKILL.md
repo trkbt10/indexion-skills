@@ -1,6 +1,6 @@
 ---
 name: indexion-sdd
-description: RFCや仕様書からSDD要件を生成し、実装との適合性を定量検証する。spec draft→spec align→spec verify→codex/claude連携の自動バリデーションループ。仕様↔実装のドリフトゲートをCI的に運用する。
+description: Generate SDD requirements from RFCs/specs and quantitatively verify implementation conformance. spec draft → spec align → spec verify → automated validation loop with codex/claude. Operate spec-to-impl drift gates as CI checks.
 ---
 
 # indexion SDD (Spec-Driven Development)
@@ -32,7 +32,7 @@ that feeds indexion's quantitative results into agent-driven qualitative review.
 # Create project directory
 mkdir my-rfc-impl && cd my-rfc-impl
 
-# Install cc-sdd for your agent — lang はコードの言語に合わせる
+# Install cc-sdd for your agent — set lang to match the code language
 npx cc-sdd@latest --codex-skills --lang en --yes   # codex (skills mode)
 npx cc-sdd@latest --claude-skills --lang en --yes   # claude (skills mode)
 
