@@ -12,7 +12,7 @@ that feeds indexion's quantitative results into agent-driven qualitative review.
 
 ## When to Use
 
-- User wants to implement an RFC or specification as a MoonBit (or other) package
+- User wants to implement an RFC or specification as a library/package
 - User asks to verify spec-to-implementation conformance
 - User wants to set up a SDD project with cc-sdd + codex + indexion
 - User says "run the SDD loop" or "validate against the spec"
@@ -36,8 +36,8 @@ mkdir my-rfc-impl && cd my-rfc-impl
 npx cc-sdd@latest --codex-skills --lang en --yes   # codex (skills mode)
 npx cc-sdd@latest --claude-skills --lang en --yes   # claude (skills mode)
 
-# Initialize MoonBit project (or other language)
-# Create moon.mod.json, src/lib/moon.pkg.json, etc.
+# Initialize project (language-specific)
+# e.g., cargo init, npm init, moon new, etc.
 
 # Initialize git
 git init && git add -A && git commit -m "init"
@@ -111,6 +111,33 @@ Do NOT align source spec directly against design or code — the vocabulary
 spaces differ too much (normative spec language vs. software design vs.
 code identifiers). Each hop bridges one abstraction gap.
 
+**Semantic fidelity review (not automatable):**
+
+`spec align` checks vocabulary overlap, but cannot detect requirements
+that **invert** the source spec's intent while using the same vocabulary.
+A common failure mode:
+
+- Source spec: "The DCTDecode filter **shall decode** JPEG data into samples"
+- Requirements draft: "For DCTDecode, the decoder **shall return** an error
+  indicating the filter is not yet supported"
+
+Both mention "DCTDecode", "filter", "shall" — vocabulary matches, so
+`spec align` reports MATCHED. But the requirement says the opposite of
+what the spec demands. This creates a hidden gap that only surfaces when
+E2E tests fail (Step 2.9).
+
+**After `spec draft` generates requirements, review for these patterns:**
+
+- `"not yet supported"`, `"not implemented"`, `"placeholder"`, `"stub"`
+  — these indicate the draft punted on a spec requirement
+- `"shall return an error"` for something the source spec says `"shall
+  decode/process/convert"` — intent inversion
+- Requirements that group multiple spec features into a single "unsupported"
+  bucket — each spec feature deserves its own requirement
+
+Fix these before proceeding to Step 2. Leaving them creates a false sense
+of spec conformance that only E2E testing can expose.
+
 ### Step 2: Agent SDD Phases (codex / claude)
 
 cc-sdd v3+ uses skills mode (`$kiro-spec-*` commands).
@@ -172,7 +199,7 @@ indexion spec align status .kiro/specs/<FEATURE>/requirements.md src/<pkg>/ --th
 ```
 
 If DRIFTED items remain for the requirement your task addresses, fix them
-(add spec vocabulary to pub declaration doc comments) and re-commit.
+(add spec vocabulary to public declaration doc comments) and re-commit.
 
 When all tasks are done, `spec align status --fail-on drifted` must exit 0.
 
@@ -212,6 +239,26 @@ In this phase, implement:
 Every requirement that describes processing, conversion, interpretation,
 or validation MUST have a corresponding function implementation — not
 just a type definition.
+
+## SHALLOW Resolution Rule
+
+SHALLOW is detected when a requirement matches a type definition in a file
+that has no non-trivial function implementations (>4 lines). To resolve:
+
+**Add functions to the SAME FILE where the type is defined.**
+
+Do NOT put logic in a separate file — SHALLOW checks per-file. If a
+type is defined in one file and its methods are in a different file,
+the type's file still has no functions and triggers SHALLOW.
+
+Examples of functions that resolve SHALLOW:
+- A method on the type with >4 lines of logic (match arms, loops,
+  validation, computation)
+- A constructor that does non-trivial work (parsing, validation)
+
+Examples that do NOT resolve SHALLOW (too trivial, ≤4 lines):
+- A default constructor that just returns a struct literal
+- A one-liner boolean accessor
 
 ## Per-Task Drift Gate (with shallow detection)
 
@@ -293,10 +340,18 @@ indexion spec align status $SPEC_DIR/requirements.md src/ --threshold 0.3 --fail
 ```
 
 **SHALLOW detection:** When a requirement matches only to type/struct/enum
-declarations in a file that contains no function implementations, `spec align`
-classifies it as SHALLOW. This catches the pattern where Codex writes type
-definitions to satisfy vocabulary matching but omits the actual processing logic
-that the requirement demands.
+declarations in a file that contains no non-trivial function implementations
+(>4 lines), `spec align` classifies it as SHALLOW. This catches two patterns:
+
+1. Codex writes type definitions to satisfy vocabulary matching but omits
+   the actual processing logic that the requirement demands.
+2. Codex adds logic in a **separate file** from the type definition.
+   SHALLOW checks per-file, so a type in one file with methods only in
+   another file still triggers SHALLOW on the type's file.
+
+**Resolution:** Add methods to the same file where the type is defined.
+Trivial functions (constructors, one-liner accessors ≤4 lines) do not
+count. See Phase B prompt template for examples.
 
 When including this gate in a Codex prompt, instruct the agent to run
 these commands after each task commit and fix any flagged items before
@@ -308,16 +363,60 @@ After completing each task (commit), run:
   indexion spec align status ... --threshold 0.3 --fail-on any
 If DRIFTED, SPEC_ONLY, or SHALLOW items remain for the requirement
 your task addresses, fix them before moving to the next task.
-- DRIFTED: add spec vocabulary to pub declaration doc comments
+- DRIFTED: add spec vocabulary to public declaration doc comments
 - SPEC_ONLY: implement the missing requirement
-- SHALLOW: add function implementations (not just type definitions)
+- SHALLOW: add non-trivial function implementations (>4 lines) to the
+  SAME FILE where the matched type is defined. Do not add logic in a
+  separate file — SHALLOW checks per-file.
 When all tasks are done, spec align status --fail-on any must exit 0
 with Shallow: 0.
 ```
 
-### Step 2.6: Stall Detection and Recovery
+### Step 2.6: Phase B Iteration (SHALLOW Resolution Rounds)
+
+Phase B rarely resolves all SHALLOW items in a single Codex session.
+Common causes:
+- Codex adds logic in a new file instead of the type definition file
+- Codex adds trivial constructors/accessors (≤4 lines) that don't count
+- New type definitions are added without corresponding logic
+
+**Iteration protocol:**
+
+After each Phase B session completes:
+
+1. Run the SHALLOW audit:
+   ```bash
+   indexion spec align status $SPEC_DIR/requirements.md src/$PKG/ \
+     --threshold 0.3 --fail-on shallow
+   ```
+
+2. If `Shallow: 0`, proceed to E2E verification (Step 2.9).
+
+3. If SHALLOW > 0, identify the specific items:
+   ```bash
+   indexion spec align diff $SPEC_DIR/requirements.md src/$PKG/ \
+     --format markdown --threshold 0.3 | grep SHALLOW
+   ```
+
+4. Write a targeted round prompt that:
+   - Lists the remaining SHALLOW items explicitly
+   - Names the exact files that need functions added
+   - States the rule: **add functions to the same file as the type**
+   - Specifies what methods to add (not just "fix SHALLOW")
+
+5. Launch the next round:
+   ```bash
+   codex exec --full-auto --json -C . \
+     "$(cat $REPORT_DIR/round-N.md)" > $REPORT_DIR/round-N.jsonl &
+   ```
+
+**Typical: 2-3 rounds.** Round 1 adds core logic, Round 2 forces
+same-file methods, Round 3 catches remaining edge cases.
+
+### Step 2.7: Stall Detection and Recovery
 
 Codex processes can stall (lost API connection, blocked review loop, etc.).
+This is common during long Phase B sessions.
 
 **Detection:**
 
@@ -357,7 +456,7 @@ When a stall is confirmed:
 the Codex agent. If you commit manually, you bypass the SDD protocol
 (RED→GREEN evidence, review, verification) and invalidate the workflow.
 
-### Step 2.7: Drift Gate Proxy (when Codex cannot run indexion)
+### Step 2.8: Drift Gate Proxy (when Codex cannot run indexion)
 
 Codex runs `indexion` commands inside the impl project directory. If
 `indexion` is not installed, is too old, or lacks required KGF specs,
@@ -392,6 +491,68 @@ is not yet released), the orchestrator runs the drift gate externally:
    ```
 3. If DRIFTED/SPEC_ONLY items appear, run the vocab fix step (Step 3.5)
    with the externally generated reports.
+
+**`--specs-dir` caveat:** When running the indexion binary directly
+(not via the project's build tool), it may not find KGF specs
+automatically. Pass `--specs-dir` explicitly:
+
+```bash
+indexion spec align diff ... --specs-dir /path/to/indexion/kgfs
+```
+
+Without this, `spec align` may return "No alignment data found" because
+the requirement document format is unrecognized.
+
+### Step 2.9: E2E Verification (post-SHALLOW)
+
+After all SHALLOW items are resolved (`Shallow: 0`), verify that the
+implementation actually works end-to-end. `spec align` only checks
+vocabulary — it cannot confirm functional correctness.
+
+Write E2E tests that exercise the full pipeline against real input data:
+
+```bash
+# Example E2E pattern:
+# 1. Load a real input file (not just synthetic fixtures)
+# 2. Run the full processing pipeline end-to-end
+# 3. Assert the output matches expected results
+```
+
+**Common E2E failure modes after SHALLOW=0:**
+- Type definitions exist and logic functions exist, but the pipeline
+  raises errors on real input (missing encoding tables, unsupported
+  font types, etc.)
+- All tests pass on synthetic fixtures but fail on real files because
+  fixtures don't exercise the full code path
+- Functions are implemented but not wired into the top-level API
+
+If E2E tests fail, write additional Codex prompts targeting the specific
+failure. The spec align gate ensures the vocabulary stays aligned while
+Codex fixes the implementation.
+
+### Step 2.10: Parallel Feature Execution
+
+Multiple features can run in parallel Codex sessions:
+
+```bash
+for FEATURE in feature-a feature-b feature-c; do
+  codex exec --full-auto --json -C . \
+    "$(cat $REPORT_DIR/$FEATURE/impl-phase-b.md)" \
+    > $REPORT_DIR/$FEATURE/impl-phase-b.jsonl 2>&1 &
+  echo "$FEATURE: $!"
+done
+```
+
+**Caveats:**
+- Multiple Codex sessions may edit overlapping files (e.g., multiple
+  features write to `src/graphics/`). Git will auto-merge unless the
+  same lines are modified.
+- If sessions commit in different branches, merge conflicts are the
+  orchestrator's responsibility.
+- Monitor all sessions with `/loop` — check event counts, commits,
+  and process vitals for each PID.
+- Stalls are more common with parallel sessions (API rate limits).
+  Use Step 2.7 detection per-session.
 
 ### Step 3: Validation Loop (indexion + agent)
 
@@ -442,7 +603,7 @@ SPEC_ONLY, or SHALLOW. For each item, determine whether it is:
    implemented at all. Add the missing implementation and tests.
 2. **Vocabulary gap** (DRIFTED) — the implementation exists but spec
    vocabulary is missing from public doc comments. Add spec terms to
-   pub declarations.
+   public declarations.
 3. **Depth gap** (SHALLOW) — the requirement matched to type definitions
    only, with no function implementations in the same file. Add the
    actual processing/parsing/conversion logic that the requirement demands.
@@ -490,6 +651,31 @@ indexion spec align status .kiro/specs/<feature>/requirements.md src/ \
 - Typical: 1-2 fix cycles. If SPEC_ONLY persists, the agent may need
   guidance that the relevant public API entry point should carry the
   vocabulary (e.g. a top-level `open` function documents the full flow).
+
+**Known blind spots:**
+
+- **CLI entry points with no public API:** Main/entry-point modules
+  often have no public declarations — all functions are private to the
+  module. `spec align` extracts vocabulary only from public declarations,
+  so entry-point modules always show Matched: 0 / SPEC_ONLY for all
+  requirements. **Workaround:** split CLI logic into a library module
+  that exposes public functions, with the entry point as a thin
+  dispatcher. Align requirements against the library, not the entry point.
+
+- **Empty doc comments:** Codex often writes doc comment syntax without
+  any actual text content. These are invisible to `spec align` because
+  they contain no vocabulary. The vocab fix prompt must explicitly
+  instruct the agent: "Do not leave doc comments empty. Every public
+  declaration must have a doc comment that describes its purpose using
+  terminology from the requirements."
+
+- **Literal requirements vs. identifier matching:** Requirements that
+  reference project-specific literals (package names, table numbers,
+  configuration keys) will show as DRIFTED if the implementation doc
+  comments don't mention the exact literal. This is usually a sign
+  that the **requirements contain project-specific details that don't
+  belong there** — fix the requirements to use generic descriptions,
+  or accept that the vocab fix agent must propagate these literals.
 
 ### Step 4: Documentation Drift Detection (plan reconcile)
 

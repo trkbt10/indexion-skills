@@ -28,11 +28,12 @@ curl -fsSL https://raw.githubusercontent.com/trkbt10/indexion/main/install.sh | 
 | `indexion-segment` | `indexion segment` | Split text into contextual segments |
 | `indexion-kgf` | `indexion kgf` | Inspect and debug KGF language specs |
 
-### Documentation
+### Documentation & README
 
 | Skill | Command | Description |
 |-------|---------|-------------|
-| `indexion-documentation` | `indexion doc *`, `indexion plan documentation/readme/reconcile` | Documentation lifecycle — generate, analyze, plan, verify |
+| `indexion-documentation` | `indexion plan documentation/reconcile`, `indexion doc graph` | Documentation analysis — coverage, drift detection, dependency graphs |
+| `indexion-readme` | `indexion doc init/readme`, `indexion plan readme` | README construction — initialize, generate, plan, assemble |
 
 ### Spec-Driven Development
 
@@ -58,7 +59,8 @@ indexion-skills/
 │   ├── indexion-explore/     # File similarity analysis
 │   ├── indexion-segment/     # Text segmentation
 │   ├── indexion-kgf/         # KGF spec inspection
-│   ├── indexion-documentation/ # Documentation lifecycle (doc + plan docs/readme/reconcile)
+│   ├── indexion-documentation/ # Documentation analysis (coverage, reconcile, graph)
+│   ├── indexion-readme/       # README construction (init, generate, assemble)
 │   ├── indexion-sdd/         # Spec-Driven Development loop
 │   ├── indexion-plan-refactor/
 │   ├── indexion-plan-solid/
