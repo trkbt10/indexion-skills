@@ -138,17 +138,82 @@ git add $SPEC_DIR && git commit -m "spec: design for $FEATURE"
 codex exec --full-auto --json -C . "\$kiro-spec-tasks $FEATURE -y" > $REPORT_DIR/tasks.jsonl
 git add $SPEC_DIR && git commit -m "spec: tasks for $FEATURE"
 
-# --- Impl (long-running, background + monitor) ---
-# Write a prompt file instead of using $kiro-impl directly.
-# This allows including drift gate and commit instructions.
-cat > $REPORT_DIR/impl-prompt.md << 'IMPLEOF'
+# --- Impl Phase A: Types & Structures ---
+# Phase A implements type definitions, error types, data structures,
+# and public API surface. No logic implementations yet.
+cat > $REPORT_DIR/impl-phase-a.md << 'PHASE_A_EOF'
 ## Context
 
-You are implementing the <FEATURE> feature.
+You are implementing Phase A (Types & Structures) of the <FEATURE> feature.
 Read `.kiro/specs/<FEATURE>/tasks.md` for task details and
 `.kiro/specs/<FEATURE>/design.md` for the design.
 
+## Phase A Scope
+
+In this phase, implement ONLY:
+- Public type definitions (structs, enums, type aliases)
+- Error types
+- Constants and configuration structures
+- Public API function signatures with placeholder bodies
+- Test scaffolding (test files with placeholder tests)
+
+Do NOT implement:
+- Parsing, conversion, or transformation logic
+- Algorithm implementations
+- Complex function bodies beyond trivial constructors/accessors
+
 ## Per-Task Drift Gate
+
+After completing each task and committing, run:
+
+```bash
+indexion spec align diff .kiro/specs/<FEATURE>/requirements.md src/<pkg>/ --format markdown --threshold 0.3
+indexion spec align status .kiro/specs/<FEATURE>/requirements.md src/<pkg>/ --threshold 0.3 --fail-on drifted
+```
+
+If DRIFTED items remain for the requirement your task addresses, fix them
+(add spec vocabulary to pub declaration doc comments) and re-commit.
+
+When all tasks are done, `spec align status --fail-on drifted` must exit 0.
+
+## Important
+
+Commit your work after completing tasks. Do not leave changes uncommitted.
+PHASE_A_EOF
+
+sed -i '' "s/<FEATURE>/$FEATURE/g; s/<pkg>/$PKG/g" $REPORT_DIR/impl-phase-a.md
+
+codex exec --full-auto --json -C . \
+  "$(cat $REPORT_DIR/impl-phase-a.md)" > $REPORT_DIR/impl-phase-a.jsonl
+# Wait for Phase A to complete before running the gate
+indexion spec align status $SPEC_DIR/requirements.md src/$PKG/ \
+  --threshold 0.3 --fail-on drifted
+git add . && git commit -m "impl: Phase A types for $FEATURE"
+
+# --- Impl Phase B: Logic & Algorithms ---
+# Phase B implements actual processing logic. The Phase A types
+# are already committed, so Phase B focuses on function bodies.
+cat > $REPORT_DIR/impl-phase-b.md << 'PHASE_B_EOF'
+## Context
+
+You are implementing Phase B (Logic & Algorithms) of the <FEATURE> feature.
+Phase A (type definitions) is already committed. Read the existing type
+definitions in `src/<pkg>/` and the design in `.kiro/specs/<FEATURE>/design.md`.
+
+## Phase B Scope
+
+In this phase, implement:
+- Parsing logic (readers, decoders, interpreters)
+- Conversion and transformation algorithms
+- Validation logic beyond basic type construction
+- Integration between types (connecting readers to data structures)
+- Complete test implementations with real assertions
+
+Every requirement that describes processing, conversion, interpretation,
+or validation MUST have a corresponding function implementation — not
+just a type definition.
+
+## Per-Task Drift Gate (with shallow detection)
 
 After completing each task and committing, run:
 
@@ -157,22 +222,25 @@ indexion spec align diff .kiro/specs/<FEATURE>/requirements.md src/<pkg>/ --form
 indexion spec align status .kiro/specs/<FEATURE>/requirements.md src/<pkg>/ --threshold 0.3 --fail-on any
 ```
 
-If DRIFTED or SPEC_ONLY items remain for the requirement your task
-addresses, fix them (add spec vocabulary to pub declaration doc comments)
-and re-commit before moving to the next task.
+The `--fail-on any` gate includes SHALLOW detection: if a requirement
+matched only to type definitions with no function implementations in
+the same file, it is flagged as SHALLOW. You must add function
+implementations to resolve SHALLOW items.
 
-When all tasks are done, `spec align status --fail-on any` must exit 0.
+If DRIFTED, SPEC_ONLY, or SHALLOW items remain, fix them before proceeding.
+
+When all tasks are done, `spec align status --fail-on any` must exit 0
+with Shallow: 0.
 
 ## Important
 
 Commit your work after completing tasks. Do not leave changes uncommitted.
-IMPLEOF
+PHASE_B_EOF
 
-# Replace <FEATURE> and <pkg> placeholders
-sed -i '' "s/<FEATURE>/$FEATURE/g; s/<pkg>/$PKG/g" $REPORT_DIR/impl-prompt.md
+sed -i '' "s/<FEATURE>/$FEATURE/g; s/<pkg>/$PKG/g" $REPORT_DIR/impl-phase-b.md
 
 codex exec --full-auto --json -C . \
-  "$(cat $REPORT_DIR/impl-prompt.md)" > $REPORT_DIR/impl.jsonl &
+  "$(cat $REPORT_DIR/impl-phase-b.md)" > $REPORT_DIR/impl-phase-b.jsonl &
 CODEX_PID=$!
 ```
 
@@ -209,29 +277,42 @@ codex exec resume --last
 After each `$kiro-impl` task commit, run spec alignment to verify the
 task closed its corresponding requirement gap. Do NOT proceed to the
 next task if the requirement addressed by the current task is still
-DRIFTED or SPEC_ONLY.
+DRIFTED, SPEC_ONLY, or SHALLOW.
+
+**Phase A gate** (types only — SHALLOW is expected and tolerated):
 
 ```bash
-FEATURE=<feature>
-SPEC_DIR=.kiro/specs/$FEATURE
+indexion spec align status $SPEC_DIR/requirements.md src/ --threshold 0.3 --fail-on drifted
+```
 
-# After each task commit:
+**Phase B gate** (logic — SHALLOW must be zero):
+
+```bash
 indexion spec align diff $SPEC_DIR/requirements.md src/ --format markdown --threshold 0.3
 indexion spec align status $SPEC_DIR/requirements.md src/ --threshold 0.3 --fail-on any
 ```
 
+**SHALLOW detection:** When a requirement matches only to type/struct/enum
+declarations in a file that contains no function implementations, `spec align`
+classifies it as SHALLOW. This catches the pattern where Codex writes type
+definitions to satisfy vocabulary matching but omits the actual processing logic
+that the requirement demands.
+
 When including this gate in a Codex prompt, instruct the agent to run
-these commands after each task commit and fix any DRIFTED items before
+these commands after each task commit and fix any flagged items before
 proceeding. Example instruction block for the prompt:
 
 ```
 After completing each task (commit), run:
   indexion spec align diff ... --threshold 0.3
   indexion spec align status ... --threshold 0.3 --fail-on any
-If DRIFTED or SPEC_ONLY items remain for the requirement your task
-addresses, fix them (typically by adding spec vocabulary to pub
-declaration doc comments) before moving to the next task.
-When all tasks are done, spec align status --fail-on any must exit 0.
+If DRIFTED, SPEC_ONLY, or SHALLOW items remain for the requirement
+your task addresses, fix them before moving to the next task.
+- DRIFTED: add spec vocabulary to pub declaration doc comments
+- SPEC_ONLY: implement the missing requirement
+- SHALLOW: add function implementations (not just type definitions)
+When all tasks are done, spec align status --fail-on any must exit 0
+with Shallow: 0.
 ```
 
 ### Step 2.6: Stall Detection and Recovery
@@ -354,13 +435,17 @@ indexion spec verify --spec='.kiro/specs/<feature>/requirements.md' src/ \
 
 # 2. Write a prompt file (avoid HEREDOC — use file to prevent stdin blocking)
 cat > .indexion/sdd-reports/vocab-fix-prompt.md << 'EOF'
-The spec alignment tool reports that several requirements are DRIFTED or
-SPEC_ONLY. For each item, determine whether it is:
+The spec alignment tool reports that several requirements are DRIFTED,
+SPEC_ONLY, or SHALLOW. For each item, determine whether it is:
 
-1. **Implementation gap** — the spec requirement is not implemented at all.
-   Add the missing implementation (types, functions, validation) and tests.
-2. **Vocabulary gap** — the implementation exists but spec vocabulary is
-   missing from public doc comments. Add spec terms to pub declarations.
+1. **Implementation gap** (SPEC_ONLY) — the spec requirement is not
+   implemented at all. Add the missing implementation and tests.
+2. **Vocabulary gap** (DRIFTED) — the implementation exists but spec
+   vocabulary is missing from public doc comments. Add spec terms to
+   pub declarations.
+3. **Depth gap** (SHALLOW) — the requirement matched to type definitions
+   only, with no function implementations in the same file. Add the
+   actual processing/parsing/conversion logic that the requirement demands.
 
 Your task:
 - Read the alignment report below.
@@ -433,14 +518,14 @@ ongoing documentation maintenance after the feature ships.
 ```bash
 indexion spec draft <source-file-or-dir>
 indexion spec draft --output requirements.md --format markdown rfc.md
-indexion spec draft --profile sdd-numbered-requirement rfc.md
+indexion spec draft --profile sdd-requirement rfc.md
 ```
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--output, -o` | stdout | Output file path |
 | `--format` | markdown | Output format: markdown, json |
-| `--profile` | sdd-numbered-requirement | Draft profile (KGF spec name) |
+| `--profile` | sdd-requirement | Draft profile (KGF spec name) |
 | `--max-requirements` | 64 | Maximum requirements to extract |
 | `--specs-dir` | auto | KGF specs directory |
 
@@ -464,7 +549,7 @@ indexion spec verify --spec='requirements.md' src/lib/ --format md
 indexion spec align diff requirements.md src/lib/ --format markdown --threshold 0.3
 ```
 
-Reports: MATCHED, DRIFTED, SPEC_ONLY (spec with no impl match), IMPL_ONLY (impl with no spec match).
+Reports: MATCHED, DRIFTED, SPEC_ONLY (spec with no impl match), IMPL_ONLY (impl with no spec match), SHALLOW (matched to type-only stubs without function implementations).
 
 ### spec align trace — Traceability Matrix
 
@@ -486,7 +571,8 @@ indexion spec align status requirements.md src/lib/ --fail-on any --threshold 0.
 | `none` | Always pass |
 | `drifted` | Fail if any DRIFTED |
 | `spec-only` | Fail if any SPEC_ONLY |
-| `any` | Fail on DRIFTED or SPEC_ONLY |
+| `shallow` | Fail if any SHALLOW (type-only stubs without function implementations) |
+| `any` | Fail on DRIFTED, SPEC_ONLY, SHALLOW, or CONFLICT |
 
 ### spec align watch — Watch Mode
 
