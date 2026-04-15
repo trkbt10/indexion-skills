@@ -250,6 +250,10 @@ indexion wiki pages add --id=<id> --title="..." --content=/tmp/page.md \
   --sources="..." --provenance=synthesized --actor="agent:<name>"
 ```
 
+**No initialization step is needed.** The first `wiki pages add` call automatically
+creates `.indexion/wiki/` and an empty `wiki.json` manifest. There is no separate
+`wiki init` command.
+
 `wiki pages plan` uses the CodeGraph to propose concept-based pages, not file-based ones.
 Prefer concept pages (e.g., "KGF System") over file pages (e.g., "src/kgf/lexer/lexer.mbt").
 
