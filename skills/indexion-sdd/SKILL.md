@@ -669,6 +669,15 @@ indexion spec align status .kiro/specs/<feature>/requirements.md src/ \
   declaration must have a doc comment that describes its purpose using
   terminology from the requirements."
 
+- **Internal-only modules (private functions):** When implementation
+  logic is entirely private (not public), `spec align` cannot see it.
+  This is common in filter/codec packages where a public pipeline
+  function dispatches to private decoders. SHALLOW triggers on the
+  type file even though logic exists. **Workaround:** either promote
+  key internal functions to public (they become testable API surface),
+  or consolidate spec vocabulary into the public pipeline function's
+  doc comment so the requirement matches there instead.
+
 - **Literal requirements vs. identifier matching:** Requirements that
   reference project-specific literals (package names, table numbers,
   configuration keys) will show as DRIFTED if the implementation doc
