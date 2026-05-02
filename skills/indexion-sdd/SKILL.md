@@ -686,6 +686,23 @@ indexion spec align status .kiro/specs/<feature>/requirements.md src/ \
   belong there** — fix the requirements to use generic descriptions,
   or accept that the vocab fix agent must propagate these literals.
 
+- **"Fallback" framing vs. spec-mandated implementation:** When the
+  agent proposes a "fallback" for an unsupported feature, verify
+  whether the feature is actually required by the source specification.
+  Example: TrueType font cmap table parsing was proposed as a
+  "fallback" but is in fact mandated by the spec for TrueType font
+  encoding resolution. Framing spec requirements as fallbacks creates
+  incorrect priority and may lead to incomplete implementation.
+
+- **Vocabulary match ≠ functional correctness:** DRIFTED=0 and
+  SHALLOW=0 confirm vocabulary alignment but cannot verify that the
+  implementation actually works. E2E tests (text extraction from real
+  files, visual rendering comparison) are essential to catch:
+  - Type definitions that compile but never execute
+  - Processing pipelines that raise errors on real input
+  - Coordinate transforms that produce wrong output
+  - Font/encoding paths that silently return empty results
+
 ### Step 4: Documentation Drift Detection (plan reconcile)
 
 After implementation, use `plan reconcile` to detect drift between
@@ -705,6 +722,34 @@ indexion plan reconcile --format md --doc 'README.md' src/lib/
 
 Use `spec align` for pre-merge gates (CI). Use `plan reconcile` for
 ongoing documentation maintenance after the feature ships.
+
+### Step 5: Visual E2E Verification (pixel diff)
+
+For projects that produce visual output (PDF rendering, SVG export,
+image processing), vocabulary-based spec align is insufficient.
+Add pixel-level comparison against reference renderings.
+
+**Pipeline:**
+1. Generate output from the library (e.g., `pdf svg input.pdf output.svg`)
+2. Rasterize to PNG at a fixed DPI (`rsvg-convert`, `puppeteer`, etc.)
+3. Generate reference PNG from an established tool (`pdftoppm`, etc.)
+4. Compare with `pixelmatch` — report diff percentage
+
+**Thresholds:**
+- < 0.01%: pixel-perfect (font AA differences only)
+- < 0.1%: minor glyph positioning differences
+- < 1%: visible text drift or image placement issues
+- > 1%: structural rendering failure
+
+**Iterative improvement:** Visual precision requires multiple rounds.
+Each round fixes one category (font mapping → glyph positioning →
+image CTM → colour conversion). Track all PDFs per round to catch
+regressions — fixing one PDF must not break another.
+
+**Known limitations of visual diff:**
+- Font antialiasing differs between rasterizers (rsvg-convert vs pdftoppm)
+- Sub-pixel rendering is platform-dependent
+- 0.01% may be the practical floor for cross-rasterizer comparison
 
 ## Individual Commands
 
