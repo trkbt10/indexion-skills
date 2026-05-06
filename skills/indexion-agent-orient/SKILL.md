@@ -62,6 +62,12 @@ be treated as proof that every referenced package owns the task.
    indexion search "<task concept>" .
    ```
 
+   Use the distinguishing terms from the brief and the user task, not only the
+   broad infrastructure words. If search results drift toward supporting
+   systems instead of the likely owner, refine the query with the name/content,
+   drift, divergence, or domain-specific terms that actually define the task
+   before changing the owner.
+
 4. Gate implementation:
 
    - If the intended edit path appears in `Do Not Implement Here`, stop and
@@ -73,9 +79,11 @@ be treated as proof that every referenced package owns the task.
 
 5. Use for zero-knowledge delegation:
 
-   Give a subagent only the task and the generated orientation brief, then ask it
-   to identify likely owner files and unsafe edit locations. It should be able to
-   name the core owner and avoid CLI-first implementation.
+   Give a subagent only the task and the generated orientation brief, then quiz
+   it before assigning implementation work. It should immediately name the core
+   owner, one unsafe edit location, and one preflight evidence path. Passing that
+   quiz is the signal that the prebuilt map has transferred the right ownership
+   assumptions.
 
 ## External Agent Mapping
 
