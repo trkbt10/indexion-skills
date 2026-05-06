@@ -27,6 +27,15 @@ be treated as proof that every referenced package owns the task.
 
 ## Pipeline
 
+0. Verify the installed CLI has this workflow:
+
+   ```bash
+   indexion agent orient --help
+   ```
+
+   If this command is missing, update or rebuild indexion before continuing.
+   Having an older `indexion` binary in PATH is not enough for this skill.
+
 1. Generate the brief:
 
    ```bash
@@ -45,9 +54,20 @@ be treated as proof that every referenced package owns the task.
    indexion agent orient --task "add a name/content drift audit" .
    ```
 
+   If the user task is in a language or wording that does not appear in the
+   repository's identifiers and README prose, keep the original task in your
+   notes and pass a short codebase-vocabulary gloss to `--task`. The gloss
+   should describe the objective, not the suspected owner. For example, say
+   "detect drift between names and implementation contents" instead of naming a
+   package you have not confirmed. Keep supporting infrastructure constraints
+   after the objective, such as "using graph/search as support" or in a second
+   sentence, so owner inference stays focused on the requested behavior.
+
 2. Read these sections before editing:
 
    - `Likely Owners`: core packages that should own domain behavior.
+     Treat the first entry as the initial owner hypothesis unless follow-up
+     evidence contradicts it.
    - `Consumer Surfaces`: CLI, skills, docs, or adapters likely to call the core.
    - `Do Not Implement Here`: files to avoid as domain implementation targets.
    - `Required Preflight`: files the agent should read before patching.
