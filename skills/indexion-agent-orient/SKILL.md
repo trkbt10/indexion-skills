@@ -59,15 +59,26 @@ be treated as proof that every referenced package owns the task.
    notes and pass a short codebase-vocabulary gloss to `--task`. The gloss
    should describe the objective, not the suspected owner. For example, say
    "detect drift between names and implementation contents" instead of naming a
-   package you have not confirmed. Keep supporting infrastructure constraints
-   after the objective, such as "using graph/search as support" or in a second
-   sentence, so owner inference stays focused on the requested behavior.
+   package you have not confirmed.
+
+   Do not put supporting infrastructure constraints into the owner-inference
+   `--task` gloss. Keep the original request, required tools, and implementation
+   constraints in your notes or subagent prompt. The gloss is only the objective
+   vocabulary used to query the prebuilt map, for example:
+
+   ```bash
+   indexion agent orient --no-update --task "name/content drift scoring and remediation planning" .
+   ```
 
 2. Read these sections before editing:
 
-   - `Likely Owners`: core packages that should own domain behavior.
+   - `Likely Implementation Owners`: core packages that should own domain
+     behavior.
      Treat the first entry as the initial owner hypothesis unless follow-up
      evidence contradicts it.
+   - `Knowledge Sources`: release notes, wiki pages, READMEs, or other
+     documentation that matched the task. Use these as context; do not treat a
+     documentation-only path as the place to implement domain behavior.
    - `Consumer Surfaces`: CLI, skills, docs, or adapters likely to call the core.
    - `Do Not Implement Here`: files to avoid as domain implementation targets.
    - `Required Preflight`: files the agent should read before patching.
@@ -92,8 +103,8 @@ be treated as proof that every referenced package owns the task.
 
    - If the intended edit path appears in `Do Not Implement Here`, stop and
      explain the conflict.
-   - If the intended owner is absent from `Likely Owners`, gather more evidence
-     with `doc graph`, `grep`, `search`, or `explore`.
+   - If the intended owner is absent from `Likely Implementation Owners`, gather
+     more evidence with `doc graph`, `grep`, `search`, or `explore`.
    - Keep CLI code thin unless the brief and follow-up evidence show it owns the
      behavior.
 
@@ -101,9 +112,9 @@ be treated as proof that every referenced package owns the task.
 
    Give a subagent only the task and the generated orientation brief, then quiz
    it before assigning implementation work. It should immediately name the core
-   owner, one unsafe edit location, and one preflight evidence path. Passing that
-   quiz is the signal that the prebuilt map has transferred the right ownership
-   assumptions.
+   implementation owner, one knowledge source, one unsafe edit location, and one
+   preflight evidence path. Passing that quiz is the signal that the prebuilt map
+   has transferred the right ownership assumptions.
 
 ## External Agent Mapping
 
