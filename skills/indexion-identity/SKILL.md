@@ -10,7 +10,9 @@ their contents.
 
 The CLI scans files, folders, and graph-level declaration symbols. It does not
 treat every local variable, parameter, or field as an independent naming target;
-those can still influence the containing file summary.
+those can still influence the containing file summary. File names are evaluated
+with parent scope, and declaration-heavy files should normally be read as
+evidence-thin until follow-up inspection proves an actual rename or split.
 
 ## Pipeline
 
