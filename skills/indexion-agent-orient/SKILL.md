@@ -12,8 +12,18 @@ of a codebase.
 
 Coding agents often anchor on the path or noun in the user prompt and start
 editing before they have learned the repository's ownership structure. `indexion
-agent orient` creates a short, evidence-backed brief that can be pasted into
+agent orient` builds an incremental orientation map across the selected
+codebase, then renders a short, evidence-backed brief that can be pasted into
 AGENTS.md, CLAUDE.md, a Claude slash command, a Codex skill, or a subagent prompt.
+
+The rendered `--limit` is only a display limit. Owner inference must come from
+the full prebuilt map, including code structure, package READMEs, and wiki pages
+whose provenance is maintained by `wiki pages update`, `wiki pages ingest`, and
+`plan reconcile`.
+
+Owner profiles use package documentation and owner-specific wiki pages. Broad
+wiki pages with multiple source roots are useful background, but they should not
+be treated as proof that every referenced package owns the task.
 
 ## Pipeline
 
@@ -23,10 +33,16 @@ AGENTS.md, CLAUDE.md, a Claude slash command, a Codex skill, or a subagent promp
    indexion agent orient --task-file task.md --output=.indexion/cache/agent/orient.md .
    ```
 
+   The first run writes `.indexion/cache/agent/orient-map.json`. Later runs
+   refresh changed files and affected owner profiles only. Use `--no-update`
+   when you intentionally want to query the saved map without refreshing it.
+   This is the mode to use when a zero-knowledge agent needs an immediate
+   owner guess from the latest prebuilt map.
+
    For short tasks:
 
    ```bash
-   indexion agent orient --task "add identity audit feature" .
+   indexion agent orient --task "add a name/content drift audit" .
    ```
 
 2. Read these sections before editing:
@@ -35,6 +51,8 @@ AGENTS.md, CLAUDE.md, a Claude slash command, a Codex skill, or a subagent promp
    - `Consumer Surfaces`: CLI, skills, docs, or adapters likely to call the core.
    - `Do Not Implement Here`: files to avoid as domain implementation targets.
    - `Required Preflight`: files the agent should read before patching.
+   - `Orientation Map`: confirms the total file/owner/documentation corpus used
+     before display truncation.
 
 3. Confirm the owner with focused tools:
 
