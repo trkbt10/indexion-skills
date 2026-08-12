@@ -1,6 +1,6 @@
 ---
 name: indexion-search
-description: "Where is this function?" "Any O(n^2) hotspots?" "Which files are similar?" "Find code that does X" — pick the right indexion command for your search intent. Covers token patterns, structural queries, semantic similarity, file-level exploration, and cached index lifecycle.
+description: '"Where is this function?" "Any O(n^2) hotspots?" "Which files are similar?" "Find code that does X" — pick the right indexion command for your search intent. Covers token patterns, structural queries, semantic similarity, file-level exploration, and cached index lifecycle.'
 ---
 
 # indexion search — Codebase Search & Exploration
